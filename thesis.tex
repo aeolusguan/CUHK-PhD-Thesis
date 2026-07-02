@@ -94,7 +94,7 @@
 
 %%%%%%%%%%%%%%%% COMPULSORY FIELDS %%%%%%%%%%%%%%%%
 
-\title{Learning Depth and Motion from Visual Geometry: Unifying Stereo, Semantic, and Temporal Information} % needs to match title on DAC
+\title{Learning Depth and Motion from Visual Geometry: Unifying Stereo, Semantic, and Temporal Evidence} % needs to match title on DAC
 \author{GUAN, Tongfan} % full name as it appears on your GSAS record, needs
                           % to match name on DAC
 \degreename{Doctor of Philosophy}
@@ -122,34 +122,67 @@
 %\copyrightpage
 \committeepage
 \begin{abstract}
-Recovering accurate 3D structure and camera motion from visual observations is a foundational challenge in computer vision and embodied robotics.
-This capability underpins a wide range of applications,  from autonomous navigation and robotic manipulation to augmented reality.
-Yet, depth and motion are not directly observable from images and must instead be inferred from underlying geometric relationships.
-In natural visual perception, multiple sources of geometric information are available, including stereo correspondences across viewpoints, semantic and structural context from monocular observations, and temporal dynamics induced by motion over time.
-While each source provides complementary strengths, effectively unifying these heterogeneous representations within a unified learning framework remains an open challenge.
+Recovering metric depth and camera motion from visual observations is a central problem in computer vision and embodied robotics.
+Images do not directly measure 3D structure, scale, or ego-motion; these quantities must be inferred from visual geometry.
+Stereo correspondence provides metric constraints across viewpoints, monocular semantic priors capture object- and scene-level regularities, and temporal motion supplies parallax over time.
+Each source of evidence is powerful but incomplete: stereo can fail under weak texture, occlusion, or reflective surfaces; monocular priors may lack reliable metric scale; and temporal cues entangle depth, ego-motion, dynamic objects, and scale ambiguity.
+This thesis studies how neural networks can learn depth and motion by progressively organizing stereo, semantic, and temporal evidence into structured and unified geometric representations.
 
-This thesis investigates how neural networks can learn visual geometry from stereo, semantic, and temporal information to enable robust depth and motion perception.
-We begin by mastering the first cue, \ie, explicit stereo correspondence, through a neural Markov Random Field formulation for stereo matching.
-This approach embeds structured correspondence reasoning directly into the learning process and establishes a principled foundation for correspondence-based depth estimation.
-Building on this foundation, we address the challenge of incorporating semantic context. 
-We propose a cross-modal framework that bidirectionally aligns monocular and stereo representations within a shared latent geometric space.
-This alignment facilitates knowledge transfer between distinct depth cues and highlights the critical role of semantic understanding in resolving geometric ambiguity.
-These insights naturally motivate a transition from explicit correspondence modeling toward more holistic and unified representations.
+The first part of the thesis establishes a structured foundation for stereo geometry.
+Neural Markov Random Fields (NMRF) formulate stereo matching as learnable inference over compact disparity hypotheses, embedding correspondence reasoning and spatial regularization into neural message passing.
+This structured stereo model provides accurate and efficient metric depth, and it also serves as a source of dense geometric cues for later supervision.
+Building on this foundation, structure-aware depth completion combines sparse metric labels, dense NMRF predictions, confidence estimates, and image-guided geometric regularization to generate robust pseudo labels.
+These two contributions show that classical geometric inductive biases can be retained inside modern neural learning rather than replaced by purely data-driven regression.
 
-To this end, we develop a unified architecture based on a single-stream Vision Transformer that directly regresses depth from visual inputs, whether a stereo pair or a single image.
-This model demonstrates that geometric principles can be implicitly captured through global reasoning, without the need for explicit cost-volume construction or carefully engineered matching pipelines.
-Finally, we extend this unified philosophy to the temporal domain to tackle the inherent coupling of camera ego-motion and scene geometry in monocular video. 
-Moving beyond conventional visual representations, we propose a geometry-native Transformer that operates directly on estimated optical flow fields and monocular depth priors.
-At its core lies a novel Transformer block that decouples global rigid motion from local structural parallax, steering the network toward a physically consistent geometric consensus while suppressing interference from dynamic objects.
-Through joint reasoning over temporal motion fields and monocular depth priors, the proposed approach seamlessly resolves degenerate kinematic configurations, such as pure camera rotation or nearly forward translation, that typically challenge classic optimization methods like bundle adjustment.
-The result is a framework that accurately and simultaneously recovers camera pose and scene geometry, even under severe kinematic degeneracies and in complex dynamic environments.
+The second part moves from stereo-only reasoning toward geometry-semantic representation learning.
+BridgeDepth aligns monocular semantic priors with stereo geometric evidence in a shared latent space while preserving specialized pathways for contextual reasoning and disparity hypotheses.
+Its bidirectional latent alignment allows monocular structure to guide ambiguous stereo regions and allows stereo evidence to ground monocular prediction in metric geometry.
+DispViT then advances from alignment to unification by encoding binocular input with a single-stream Vision Transformer and decoding disparity from the resulting shared token representation.
+In the thesis, disparity estimation remains the primary geometric task, while semantic segmentation is used as an auxiliary readout to examine whether the shared representation preserves semantic organization.
+Together, BridgeDepth and DispViT demonstrate a progression from cross-modal interaction to unified geometry-semantic representation learning.
 
-Together, these contributions establish a unified perspective on learning from visual geometry. By systematically integrating stereo correspondence, semantic context, and temporal dynamics, this thesis demonstrates that robust depth and motion perception can be achieved through a coherent framework that leverages complementary geometric structure across space, modality, and time.
-In doing so, it advances the development of geometry-centric visual perception systems toward greater robustness, generality, and physical fidelity.
+The final part extends the same thesis narrative from static visual geometry to temporal geometry.
+Temporal motion offers a ubiquitous source of geometric evidence because a moving camera observes scene structure from multiple viewpoints, but this evidence is less direct than stereo correspondence.
+Optical flow mixes depth, ego-motion, object motion, correspondence reliability, and monocular scale, making temporal geometry a natural test of the central thesis: robust perception requires representations that keep complementary cues interpretable while allowing them to constrain one another.
+GeoNT addresses this challenge with a geometry-native Transformer that reasons over motion, reliability, camera rays, and monocular depth priors rather than treating video only as RGB appearance.
+By organizing temporal evidence in this form, the thesis extends unified geometry-semantic representation learning toward depth and motion estimation from monocular video for temporal local mapping.
+
+Across these contributions, the thesis argues that robust depth and motion perception is best understood as learning from complementary visual evidence rather than relying on a single cue or representation.
+By moving from structured stereo inference, to reliable geometry supervision, to monocular-stereo latent alignment, to unified geometry-semantic representation learning, and finally to temporal local mapping, this work develops a coherent framework for learning visual geometry across space, modality, and time.
+The resulting systems advance geometry-centric visual perception toward greater robustness, generality, and physical consistency.
 \end{abstract}
 
 \begin{cabstract}
+\begin{CJK}{UTF8}{bsmi}
+從視覺觀測中恢復具有度量尺度的深度與相機運動，是電腦視覺與具身機器人中的核心問題。
+影像本身並不直接量測三維結構、尺度或相機自運動；這些量必須從視覺幾何關係中推斷而來。
+立體對應提供跨視角的度量約束，單目語義先驗捕捉物體與場景層級的規律，而時間運動則提供隨時間變化的視差線索。
+然而，每一種證據來源都具有力量也具有局限：立體匹配在弱紋理、遮擋或反光表面上可能失效；單目先驗可能缺乏可靠的度量尺度；時間線索則會將深度、相機自運動、動態物體與尺度歧義交織在一起。
+本論文研究神經網路如何透過逐步組織立體、語義與時間證據，學習用於深度與運動估計的結構化與統一幾何表徵。
 
+論文的第一部分建立了立體幾何的結構化基礎。
+神經馬爾可夫隨機場（NMRF）將立體匹配表述為在精簡視差假設上的可學習推理，並將對應關係推理與空間正則化嵌入神經訊息傳遞之中。
+這一結構化立體模型能夠提供準確且高效的度量深度，也為後續監督提供密集的幾何線索。
+在此基礎上，結構感知深度補全結合稀疏度量標籤、密集 NMRF 預測、信心估計與影像導引的幾何正則化，以生成更穩健的偽標籤。
+這兩項貢獻表明，經典幾何歸納偏置可以被保留在現代神經學習中，而不必被純資料驅動的回歸完全取代。
+
+論文的第二部分從單純的立體推理邁向幾何-語義表徵學習。
+BridgeDepth 在共享潛在空間中對齊單目語義先驗與立體幾何證據，同時保留分別用於上下文推理與視差假設的專門路徑。
+其雙向潛在對齊機制使單目結構能夠引導具有歧義的立體區域，也使立體證據能夠將單目預測錨定到度量幾何之中。
+DispViT 進一步從對齊走向統一：它以單流 Vision Transformer 編碼雙目輸入，並從所得的共享 token 表徵中解碼視差。
+在本論文中，視差估計仍是主要的幾何任務，而語義分割則作為輔助讀出，用於檢驗共享表徵是否保留語義組織。
+BridgeDepth 與 DispViT 共同展示了從跨模態互動到統一幾何-語義表徵學習的發展脈絡。
+
+論文的最後一部分將同一敘事從靜態視覺幾何推進到時間幾何。
+時間運動之所以重要，是因為移動相機可以從多個視角觀測場景結構；但與立體對應不同，這種證據並不直接。
+光流同時混合了深度、相機自運動、物體運動、對應可靠性與單目尺度，使時間幾何成為本文核心論點的自然檢驗：穩健感知需要一種表徵，既能保持互補線索的可解釋性，又能讓它們彼此約束。
+GeoNT 因此採用幾何原生 Transformer，圍繞運動、可靠性、相機射線與單目深度先驗進行推理，而不是僅將影片視為 RGB 外觀序列。
+透過這種時間證據組織方式，本論文將統一幾何-語義表徵學習延伸至單目影片中的深度與運動估計，並服務於時間局部建圖。
+
+綜合而言，本論文主張，穩健的深度與運動感知應被理解為從互補視覺證據中學習，而非依賴單一線索或單一表徵。
+透過從結構化立體推理，到可靠幾何監督，到單目-立體潛在對齊，到統一幾何-語義表徵學習，最終延伸至時間局部建圖，本工作建立了一個跨越空間、模態與時間的視覺幾何學習框架。
+由此得到的系統推動了以幾何為中心的視覺感知，使其朝向更高的穩健性、泛化性與物理一致性發展。
+\end{CJK}
 
 \end{cabstract}
 
@@ -167,9 +200,16 @@ In doing so, it advances the development of geometry-centric visual perception s
 \listoftables
 \listoffigures
 \begin{acknowledgments}
-  Acknowledgement here.   
-  
-  %I would like to thank my thesis committee members for their valuable and constructive comments. Furthermore, I want to express my gratitude to the professors in the Department of Systems Engineering and Engineering Management.  
+I would like to express my deepest gratitude to my supervisor, Professor Liu Yunhui, for his guidance, trust, and support throughout my doctoral study.
+His insight into robotics and visual perception has shaped the way I approach research problems, and his encouragement gave me the confidence to pursue difficult questions with patience and persistence.
+
+I am also sincerely grateful to my collaborators, Professor Wang Chen, Dr. Guo Jiaxin, Dr. Huang Tianyu, and Mr. Dong Jinhu.
+The discussions, feedback, and joint efforts we shared have been invaluable to the development of this thesis.
+Working with them has taught me not only technical knowledge, but also the importance of clarity, rigor, and collaboration in research.
+
+Finally, I would like to give my special thanks to my wife, Cao Yiwei.
+During the five years of my Ph.D. study, she shouldered most of the household responsibilities and cared for our family and child, allowing me to devote myself to research with fewer worries.
+Her understanding, companionship, and quiet strength have been the greatest source of motivation that helped me continue this journey.
 \end{acknowledgments}
 %\begin{dedication}
 %  To my parents and my girl friend. 
@@ -195,9 +235,14 @@ In doing so, it advances the development of geometry-centric visual perception s
 \chapter{Bridging Monocular and Stereo Reasoning with Latent Alignment}\label{ch:bridgedepth}
 \input{chapters/bridgedepth}
 
-\chapter{Chapter 5}
+\chapter{Unified Geometry-Semantic Representation Learning with DispViT}\label{ch:dispvit}
+\input{chapters/dispvit}
 
-\chapter{...}
+\chapter{Geometry-Native Transformer for Streaming Local Mapping}\label{ch:geont}
+\input{chapters/geont}
+
+\chapter{Conclusion and Future Directions}\label{ch:conclusion}
+\input{chapters/conclusion}
 
 
 

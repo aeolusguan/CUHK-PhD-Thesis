@@ -69,11 +69,11 @@ The key contributions are summarized as follows.
     \emph{DispViT} is proposed as a single-stream Vision Transformer that processes binocular inputs to directly predict disparity without explicit correspondence modeling.
     Remarkably, the same architecture along with the same model parameters, can be applied to single image for monocular depth estimation.
     This result provides a proof-of-concept that a unified geometric representation can transcend task-specific inductive bias, enabling depth inference from both stereo correspondence and monocular semantic within a single, coherent framework.
-    \item \textbf{Geometry-Native temporal reasoning for depth and ego-motion estimation.} Extending unified geometric representation learning to the temporal domain, this thesis investigates how cognitive and temporal observations can be jointly leveraged for depth and ego-motion estimation from monocular video.
-    A novel \emph{Geometry-Native Transformer} is developed, where motion fields (optical flow) and monocular depth estimates are patchified into geometric tokens.
-    By departing from visual-centric representations and instead reasoning directly over geometry-native tokens, the model learns a neural representation that enforces geometric consistency among estimated depth, predicted pose, and observed flow.
-    This enables the model to disentangle scene structure from camera motion.
-    Moreover, the formulation naturally handles challenging scenarios such as dynamic scenes and degenerate motion patterns (\eg, pure rotation or forward translation), which commonly limit conventional geometric pipelines.
+    \item \textbf{Geometry-native temporal reasoning for streaming local mapping.} Extending unified geometric representation learning to monocular video, this thesis investigates how temporal motion and monocular depth priors can be organized into a geometry-native representation for depth and ego-motion estimation.
+    \emph{GeoNT} tokenizes optical flow, flow confidence, intrinsics-normalized image coordinates, and normalized monocular depth instead of raw RGB appearance.
+    From this representation, the model jointly predicts refined keyframe depth, source-to-neighbor relative poses, and confidence values.
+    A streaming local mapping runtime then turns these predictions into low-latency keyframe depth and locally coherent pose-scale estimates.
+    This contribution brings the thesis arc from static stereo and semantic representation learning to temporal geometry for robotic local perception.
 \end{itemize}
 
 \section{Related Works}
@@ -211,7 +211,9 @@ Building upon this formulation, MegaSaM~\cite{li2025megasam} extends DROID-SLAM 
 It introduces two key enhancements to improve robustness under degenerate conditions.
 First, it incorporates monocular depth priors (\ie, from DepthAnything~\cite{yang2024depth} and UniDepth~\cite{piccinelli2024unidepth}) to provide informed constraints for BA optimization, which is particularly critical in low-parallax scenarios, such as near-pure rotational motion or forward camera translation, where correspondence constraints alone become insufficient.
 Second, MegaSaM learns per-pixel motion probability maps that are used to adaptively downweight dynamic or non-rigid regions within the BA objective, effectively disentangling camera motion from independently moving objects.
-Together with carefully designed training and inference strategies, MegaSaM significantly enhance the robustness and accuracy of camera pose and depth estimation in real-world videos with unconstrained motion and complex dynamics.
+Together with carefully designed training and inference strategies, MegaSaM significantly enhances the robustness and accuracy of camera pose estimation in real-world videos with unconstrained motion and complex dynamics.
+However, BA-centered systems are primarily organized around trajectory consistency, and the optimized depth state is not necessarily designed as the final high-accuracy dense depth product.
+MegaSaM reflects this separation by using a separate offline video-depth optimization procedure for its final depth output rather than relying only on the BA depth state.
 Subsequent work has explored improving the quality of motion reasoning. 
 For instance, Wang~\etal~\cite{wang2025spatialvid} refine the motion probability maps produced by MegaSaM through prompting SAM2~\cite{ravi2025sam} to obtain sharper and more coherent motion masks.
 This refinement improves the delineation of dynamic regions, leading to more reliable separation between static structure and independently moving objects during optimization.
@@ -231,12 +233,13 @@ Unlike earlier methods that rely on pairwise predictions or post-hoc alignment, 
 It achieves state-of-the-art performance across a wide range of 3D vision tasks while maintaining high computational efficiency.
 Moreover, its learned geometric representations transfer effectively to downstream tasks such as point tracking and novel view synthesis.
 
-This family of feed-forward geometry transformers represents a fundamental departure from both classical optimization-based methods and earlier learning-based SLAM systems.
-Rather than formulating geometry estimation as a multi-stage pipeline involving correspondence estimation and bundle adjustment, these approaches learn to infer 3D structure directly in a single forward pass.
-Trained on large-scale and diverse datasets, they acquire strong geometric priors that enable impressive generalization to unseen scenes.
-This shift from explicit optimization to learned geometric reasoning provides a key conceptual inspiration for this thesis.
-In particular, this thesis adopts a Geometry-Native Transformer that operates directly on unified geometric representations, \ie, wide-baseline optical flow fields and monocular depth predictions, to jointly recover scene structure and camera motion recovery.
-In contrast to existing feed-forward approaches that primarily operate on visual features, our formulation performs reasoning directly in the geometric domain.
+Together, differentiable SLAM and feed-forward geometry transformers clarify why the final chapter adopts a geometry-native Transformer rather than following either paradigm directly.
+Optimization-centered systems such as DROID-SLAM and MegaSaM show that learned priors can make dense geometric optimization more robust, but they are mainly organized around pose accuracy and still require separate treatment when high-quality depth is the target.
+Feed-forward systems such as DUSt3R and VGGT show that Transformers can learn powerful geometric priors from RGB views, but they are generally offline multi-view predictors; even when adapted to streaming use, repeated large-model inference can introduce latency, and dense depth quality remains a separate empirical question.
+The temporal chapter takes a complementary route: it uses estimated optical flow, flow uncertainty, camera intrinsics, and monocular depth priors as geometry-native tokens for keyframe-based streaming depth and motion estimation.
+This design keeps the physical measurements that couple depth and ego-motion visible to the Transformer while still allowing learned global aggregation.
+Because its outputs are refined keyframe depths, confidence-weighted relative pose measurements, and graph-compatible edges, the formulation can also serve as a measurement module for existing SLAM systems that need additional constraints against accumulated drift.
+It therefore connects contemporary geometry models to the thesis's broader argument that neural perception can integrate complementary geometric evidence across spatial, semantic, and temporal settings.
 \section{Produced Publications}
 The research work of this dissertation has produced some direct and indirect publications as listed below:
 %\noindent \bullet xx \\
@@ -246,4 +249,3 @@ The research work of this dissertation has produced some direct and indirect pub
 
 
 \section{Thesis Outline}
-
