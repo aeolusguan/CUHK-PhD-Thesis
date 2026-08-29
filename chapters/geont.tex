@@ -1,57 +1,50 @@
 % !TeX root = ../thesis.tex
 
 \section{Introduction}
-Chapter~\ref{ch:dispvit} showed that a single Transformer stream can encode semantic context and binocular geometry from a stereo pair.
-This result advances the thesis from explicit stereo matching toward unified static geometry representation, but robotic perception rarely ends at a fixed stereo pair.
-A robot receives a video stream and needs two kinds of geometry at different time scales: transient per-frame depth for immediate reaction, and consolidated keyframe depth and motion for a coherent local map.
-Temporal observations provide motion parallax beyond static stereo, yet they also entangle depth, ego-motion, dynamic objects, optical-flow reliability, and monocular scale.
-The final technical step of this thesis is therefore to move from unified static representation to a temporal representation that can operate inside a streaming local-mapping runtime.
+Chapter~\ref{ch:dispvit} established that a single Transformer stream can encode semantic context and binocular geometry from a stereo pair.
+A monocular video stream introduces motion parallax as a further source of geometric evidence, but also entangles depth with ego-motion, dynamic objects, optical-flow reliability, and monocular scale.
+For robotic perception, these temporal cues serve two complementary purposes: low-latency depth and motion estimates enable fast response, while coherent geometry accumulated over selected keyframes supports scene understanding and task planning.
+This chapter therefore studies a problem setting distinct from both full SLAM and offline reconstruction: a streaming local-mapping system that converts monocular video into immediate depth and motion measurements, together with consolidated keyframe geometry under bounded temporal support.
 
-The most established route to video geometry is to optimize camera motion and scene structure through SfM or SLAM.
+One established route to video geometry is to optimize camera motion and scene structure through SfM or SLAM.
 Classical systems optimize reprojection or photometric residuals over visual measurements~\cite{schoenberger2016sfm,murAcceptedTRO2015}, while neural systems strengthen this paradigm by embedding dense bundle adjustment (DBA) into learned update networks, as in DROID-SLAM~\cite{teed2021droid}, and by adding monocular depth priors and dynamic-region weighting, as in MegaSaM~\cite{li2025megasam}.
-These methods are highly effective for pose and trajectory estimation, but their central optimization target is not the same as the one studied in this chapter.
+These methods primarily organize their state around trajectory consistency and dense optimization.
 In MegaSaM, for example, the final video depth is obtained through a separate offline video-depth optimization procedure rather than being simply the online BA state.
-This difference motivates a narrower formulation: GeoNT acts as a learned measurement layer for streaming local mapping, with immediate tracking depth for the current frame, keyframe-aligned depth for selected keyframes, and scale-normalized pose measurements that a lightweight graph can use for local consistency.
+GeNT instead acts as a learned measurement layer for streaming local mapping, producing immediate tracking depth, keyframe-aligned depth, and scale-normalized pose measurements that a lightweight graph can use for local pose graph optimization.
 
-Recent feed-forward geometry Transformers offer a second tempting direction, but they do not by themselves solve the streaming local-mapping problem considered here.
-Models such as DUSt3R~\cite{wang2024dust3r}, MASt3R~\cite{leroy2024grounding}, and VGGT~\cite{wang2025vggt} show that Transformer backbones can infer dense geometry, cameras, and correspondences from RGB views.
-Their strength is global aggregation over visual input, often in an offline or batch multi-view setting.
-When used directly in an online stream, however, such models can face a difficult operating point: the system must select keyframes, keep latency bounded, produce usable depth and motion before the whole sequence is available, and maintain local pose-scale consistency.
-Monocular depth-prior systems address a different part of the problem: they provide strong single-image shape estimates, but the mapping system must still determine the metric gauge and temporal measurement policy.
-Thus, the goal here is not to regress all geometry from appearance alone, nor to use a monocular prior as a final depth product.
-The goal is to design a keyframe-based temporal measurement model around the geometric signals that monocular video already exposes.
+Feed-forward reconstruction approaches offer a second influential direction.
+Models such as DUSt3R~\cite{wang2024dust3r}, MASt3R~\cite{leroy2024grounding}, and VGGT~\cite{wang2025vggt} infer dense geometry, cameras, and correspondences from RGB views using learned visual representations.
+Their strength is global aggregation, typically in an offline or batch multi-view setting.
+When transferred directly to an online stream, however, they must also support keyframe selection, bounded latency, partial sequence availability, and local pose-scale consistency.
+GeNT therefore adopts a different formulation for streaming local mapping: rather than regressing all geometry from appearance alone or treating a monocular prior as the final depth product, it builds an efficient keyframe-based temporal measurement model around the geometric signals available in monocular video.
 
-This chapter studies that goal through \emph{GeoNT}, a Geometry-Native Transformer for streaming depth and motion estimation.
-The central contribution is a geometry-native temporal representation that explicitly maps monocular video cues to local depth and motion measurements.
-Given a monocular video stream with fixed intrinsics, monocular depth priors, and optical-flow estimates with reliability cues, GeoNT produces normalized depth for the reference frame or keyframe and reference-scale-normalized relative pose measurements to nearby support keyframes.
-Within the keyframe-based local mapping formulation, transient estimates support online response, while selected keyframes define keyframe-aligned dense geometry and graph-compatible motion measurements after temporal support becomes available.
-Instead of treating RGB appearance as the main token signal, GeoNT tokenizes optical flow, flow uncertainty, intrinsics-normalized rays, and a normalized monocular depth prior.
-Optical flow describes the apparent motion between frames, intrinsics convert pixel displacement into camera-normalized motion, flow uncertainty indicates where this motion is reliable, and monocular depth supplies learned scene structure when parallax is weak.
-GeoNT relates the current view, or a keyframe whose local temporal support is available, to a local set of support keyframes, predicting refined normalized depth and reference-scale-normalized relative pose measurements for keyframe-based mapping.
-Architecturally, GeoNT separates dense geometry patch tokens from compact camera tokens: patch tokens carry local motion and depth evidence, while camera tokens provide a pair-level conditioning signal for interpreting motion.
-Because this representation depends on reliable temporal correspondence, GeoNT also uses a flow frontend with ViT-based motion-basis initialization to support larger-baseline matching before Transformer aggregation.
+This chapter studies that model through \emph{GeNT} (Geometry-Native Transformer) for streaming depth and motion estimation.
+Its central technical contribution is to operate directly on geometric representations rather than visual features.
+Given a monocular video stream with fixed intrinsics, GeNT represents temporal evidence through optical flow, optical-flow confidence, intrinsics-normalized rays, and monocular depth priors, and predicts normalized depth together with relative pose measurements whose translation is expressed in the normalized depth scale of the reference view.
+Transient estimates support online response, while selected keyframes provide consolidated dense geometry and graph-compatible motion measurements after sufficient temporal support becomes available.
+The architecture separates dense geometry patch tokens from compact camera tokens so that local motion and depth evidence can be conditioned on pair-level camera context.
+Because the representation depends on reliable temporal correspondence, a ViT-based motion-basis flow frontend provides dense initialization and confidence before Transformer aggregation.
 
-The same formulation also sets the system boundary.
-GeoNT does not include full SLAM, dense bundle adjustment, loop closure, relocalization, or dense geometry for every incoming frame.
-This boundary motivates the current evaluation protocol, which focuses on keyframe-aligned depth under a consistent video-level scale and direct graph-factor quality for GeoNT relative-pose measurements.
+This formulation also establishes the system boundary.
+GeNT is not a full SLAM system: it does not include dense bundle adjustment, loop closure, or relocalization.
+Dense depth is nevertheless available for every incoming frame; the evaluation focuses on keyframe-aligned depth under a consistent video-level scale and on the quality of GeNT relative-pose measurements as graph factors.
 
-Within the thesis narrative, GeoNT completes the progression from spatial and semantic geometry to temporal geometry.
+Within the thesis narrative, GeNT completes the progression from spatial and semantic geometry to temporal geometry.
 The previous chapters move from stereo correspondence, to semantic-geometric alignment, to unified static representation.
-GeoNT extends this line by replacing image-token reasoning with tokenized temporal motion, ray geometry, reliability, and monocular structure.
+GeNT extends this line by making temporal geometric quantities the primary representation for depth and motion estimation.
 The representation is used in two estimation regimes.
 During frontend tracking, an incoming frame receives a transient depth and relative motion estimate for low-latency response.
 After keyframe selection, selected frames become keyframe nodes in the local map; once sufficient neighboring support keyframes are available, a single multi-view aggregation establishes their keyframe-aligned depth estimates and pose measurements for the pose-scale graph.
-This distinction determines how GeoNT separates online response from keyframe-aligned local geometry.
+This distinction determines how GeNT separates online response from keyframe-aligned local geometry.
 
 The technical contributions of this chapter are summarized as follows.
 \begin{itemize}[leftmargin=*]
     \item \textbf{Geometry-token measurement formulation.}
     The chapter formulates monocular video local mapping as Transformer reasoning over optical flow, flow uncertainty, intrinsics-normalized rays, and normalized monocular depth, rather than over RGB image tokens alone.
     \item \textbf{Camera-conditioned temporal aggregation.}
-    GeoNT separates dense geometry patch tokens from compact camera tokens, uses adaptive camera-token conditioning to interpret flow-depth evidence, and predicts refined normalized depth together with reference-scale-normalized relative pose measurements.
-    \item \textbf{Keyframe runtime and scale convention.}
-    The runtime distinguishes transient per-frame tracking depth from keyframe-aligned depth, uses one temporally supported multi-view refinement for each selected keyframe, and inserts scale-normalized neural pose edges into a pose-scale graph whose node scales provide the metric interpretation of keyframe depth.
+    GeNT separates dense geometry patch tokens from compact camera tokens, uses adaptive camera-token conditioning to interpret flow-depth evidence, and predicts refined normalized depth together with relative pose measurements whose translation is expressed in the normalized depth scale of the reference view.
 \end{itemize}
+The streaming runtime and pose-scale convention provide the system integration needed to use and evaluate these measurements, rather than constituting separate methodological contributions.
 Together, these contributions complete the thesis progression from stereo correspondence and semantic context to temporal geometry, while keeping the system claim scoped to streaming local perception.
 
 The rest of this chapter is organized as follows.
@@ -67,16 +60,16 @@ Section~\ref{sec:geont_discussion} discusses the role and limitations of the sys
 
 \subsection{Temporal Geometry from Monocular Video}
 Streaming monocular mapping requires a representation that separates local scene shape, metric scale, and camera motion.
-A single image can provide a strong relative scene-shape estimate through monocular priors, but its metric scale is not determined without temporal motion.
-GeoNT therefore represents each keyframe $i$ with a camera pose $\bm{T}_i \in SE(3)$, a normalized depth map $\bm{D}_i$, and a positive metric scale $s_i$.
+A single image can provide a strong relative scene-shape estimate through monocular priors, but independent framewise estimates do not by themselves guarantee a temporally consistent scale across the sequence.
+GeNT therefore represents each keyframe $i$ with a camera pose $\bm{T}_i \in SE(3)$, a normalized depth map $\bm{D}_i$, and a metric scale $s_i$.
 Given a monocular RGB video $\{\bm{I}_t\}_{t=0}^{T-1}$ with fixed camera intrinsics $\bm{K}$, the metric depth associated with keyframe $i$ is
 \begin{equation}
     \bm{Z}_i = s_i \bm{D}_i .
     \label{eq:geont_metric_depth}
 \end{equation}
 This factorization assigns local scene geometry to the depth map and assigns metric calibration to the scalar scale.
-The graph therefore adjusts the metric interpretation of a keyframe without changing the depth map itself.
-The modeling assumption is that intrinsics and preprocessing are fixed over the stream, that a monocular depth prior is available for each frame, and that optical flow provides the explicit temporal correspondence cue from which GeoNT forms its measurements.
+The graph therefore optimizes each keyframe's scale to maintain temporal consistency across the sequence, while leaving the depth map itself unchanged.
+The modeling assumption is that intrinsics and preprocessing are fixed over the stream, that a monocular depth prior is available for each frame, and that optical flow provides the explicit temporal correspondence cue from which GeNT constructs its measurements.
 
 Temporal geometry is observed through inter-frame optical flow, but a flow field alone does not determine depth or relative camera motion uniquely.
 We denote by $i$ the reference view whose depth is being estimated.
@@ -86,41 +79,42 @@ If a pixel $\bm{x}=(u,v)$ in the reference view has depth $Z_i(\bm{x})$, the rig
     \bm{f}_{ij}^{\mathrm{rigid}}(\bm{x})
     =
     \pi\!\left(
-        \bm{K}\bm{T}_{ji}
-        \left[
-        Z_i(\bm{x})\bm{K}^{-1}\bar{\bm{x}}
-        \right]
+    \bm{T}_{ji}
+    \left[
+    Z_i(\bm{x})\bm{K}^{-1}\bar{\bm{x}}
+    \right];
+    \bm{K}
     \right) - \bm{x},
     \label{eq:geont_rigid_flow}
 \end{equation}
-where $\bar{\bm{x}}=(u,v,1)^\top$ and $\pi(\cdot)$ denotes perspective projection.
+where $\bar{\bm{x}}=(u,v,1)^\top$ and $\pi(\cdot;\bm{K})$ denotes perspective projection under camera intrinsics $\bm{K}$.
 Equation~\ref{eq:geont_rigid_flow} shows why depth and pose are coupled: the same observed flow can be explained by different combinations of translation, rotation, depth, and moving objects.
 Degenerate motions make this coupling especially difficult.
 Pure rotation provides little depth parallax, and near-forward translation produces small lateral displacement for many pixels.
 Dynamic objects introduce flow that cannot be explained by a single static-scene camera motion.
 
-GeoNT treats this ambiguity as a learned measurement problem over geometric cues.
+GeNT treats this ambiguity as a learned measurement problem over geometric cues.
 Optical flow supplies direct evidence of inter-view correspondence, while a monocular geometry model supplies a normalized depth prior~\cite{wang2025moge2}.
-Given a reference view and nearby support keyframes, GeoNT predicts a refined depth representation for the reference view together with relative pose measurements between the reference view and the support keyframes.
+Given a reference view and nearby support keyframes, GeNT predicts a refined depth representation for the reference view together with relative pose measurements between the reference view and the support keyframes.
 These outputs provide the quantities needed to explain the observed flow under the rigid-projection model: local scene shape and relative motion between views.
-The GeoNT measurement is scale-normalized rather than metric: it does not output an independent scale, and its translation magnitude is interpreted relative to the normalized depth of the reference view.
+The GeNT measurement is scale-normalized rather than metric: it does not output an independent scale, and its translation magnitude is interpreted relative to the normalized depth of the reference view.
 The metric scale is introduced separately by the keyframe scale variable defined in the next subsection.
 
 \subsection{Depth and Scale Convention}
 The depth-scale convention separates neural scene-shape refinement from metric-scale optimization.
 The reason is the monocular gauge ambiguity: if all depths and translations in a local monocular reconstruction are multiplied by the same positive constant, the induced image motion can remain unchanged.
 The video therefore constrains the shape and relative motion more directly than it constrains the absolute metric unit.
-GeoNT follows this structure by predicting depth in a normalized gauge and by letting the runtime attach a metric scale to each keyframe.
+GeNT follows this structure by predicting depth in a normalized gauge and by letting the runtime attach a metric scale to each keyframe.
 
 Let $\tilde{\bm{D}}_i$ denote the normalized monocular depth prior for keyframe $i$, and let $s_i^0$ denote its initial scale before graph optimization.
-GeoNT inference uses $\tilde{\bm{D}}_i$ as the depth input, rather than feeding the current refined keyframe depth $\bm{D}_i$ back into the network.
+GeNT inference uses $\tilde{\bm{D}}_i$ as the depth input, rather than feeding the current refined keyframe depth $\bm{D}_i$ back into the network.
 This choice keeps each measurement anchored to the same monocular reference shape and avoids a feedback loop in which repeated neural updates drift away from the original geometric prior.
 
 The refined depth map $\bm{D}_i$ represents the scene shape estimated for a reference keyframe, while the scalar $s_i$ gives its metric interpretation through Equation~\ref{eq:geont_metric_depth}.
 The normalized prior $\tilde{\bm{D}}_i$ and the refined depth $\bm{D}_i$ therefore play different roles: the prior provides the anchored input shape, whereas $\bm{D}_i$ denotes the geometry refined from temporal evidence.
 When delayed temporal aggregation produces the consolidated depth estimate for keyframe $i$, the associated pre-optimization keyframe scale can be adjusted using the ratio between the normalized monocular prior mean and the temporally refined-depth mean over valid pixels.
 This mean-ratio update preserves the keyframe's coarse metric gauge while allowing temporal aggregation to change local shape; it is computed over valid non-sky pixels and assumes that the valid-mask mean is a stable summary of the keyframe's depth scale.
-This gives each keyframe a local depth-shape estimate and a local scale estimate without asking the GeoNT measurement itself to recover a globally coherent metric scale.
+This gives each keyframe a local depth-shape estimate and a local scale estimate without asking the GeNT measurement itself to recover a globally coherent metric scale.
 
 The scale is represented as a node variable rather than as an edge variable because all outgoing measurements from keyframe $i$ share the same reference depth gauge.
 If each edge had its own free scale, a problematic correspondence, a dynamic object, or a weak-baseline pair could be absorbed by an edge-specific scale without producing a consistent metric depth for the keyframe.
@@ -130,9 +124,9 @@ The graph acts on poses and node scales, not on the depth maps themselves.
 When the optimized scale $s_i$ changes, the same keyframe depth map receives a new metric interpretation through Equation~\ref{eq:geont_metric_depth}.
 This separation allows the system to obtain temporally coherent metric depths while preserving the keyframe depth map as the learned representation of local scene geometry.
 
-\subsection{Reference-Scale-Normalized Pose Edges}
-Reference-scale-normalized pose edges make GeoNT measurements compatible with monocular scale ambiguity.
-Because monocular video cannot determine absolute translation scale from a single pair alone, GeoNT does not treat its pairwise translation as a metric quantity by itself.
+\subsection{Pose Edges in the Reference-View Depth Gauge}
+Expressing pose edges in the reference-view depth gauge makes GeNT measurements compatible with monocular scale ambiguity.
+Because monocular video cannot determine absolute translation scale from a single pair alone, GeNT does not treat its pairwise translation as a metric quantity by itself.
 Instead, the measured translation is expressed in the normalized depth unit of the reference view.
 The reference-keyframe scale $s_i$ then converts this normalized translation into metric motion during graph optimization.
 For a directed edge $(i,j)$, the measured translation $\hat{\bm{t}}_{ij}$ is interpreted as
@@ -146,25 +140,25 @@ and the measured rotation $\hat{\bm{R}}_{ij}$ is interpreted as the relative rot
 Normalizing by the reference scale is intentional: the depth head predicts the shape of the reference keyframe, the translation head is trained in that same gauge, and the graph state contains exactly one scale variable that determines how the reference keyframe's depth estimate and outgoing translations become metric.
 This convention makes monocular scale explicit in optimization: translation consistency is enforced through the joint pose-graph optimization of SE(3) poses and node scales, while rotation remains independent of metric scale.
 
-The graph therefore treats GeoNT relative poses as scale-aware measurements rather than fully metric pairwise reconstructions.
+The graph therefore treats GeNT relative poses as scale-aware measurements rather than fully metric pairwise reconstructions.
 Confidence values, when used, weight these neural measurements as soft constraints instead of turning them into hard geometric equalities.
 The coherent metric scale is the per-keyframe scale smoothed by the graph together with the SE(3) trajectory.
 This convention avoids three common failure modes: pairwise metric translations that disagree because each pair chooses a different gauge, edge-scale variables that hide bad measurements behind unconstrained scale slack, and repeated dense-depth rewrites after graph optimization.
-GeoNT can therefore provide graph-compatible motion constraints without forcing each pairwise prediction to solve the entire monocular metric-scale problem on its own.
+GeNT can therefore provide graph-compatible motion constraints without forcing each pairwise prediction to solve the entire monocular metric-scale problem on its own.
 
 \section{Geometry-Native Transformer}
 \label{sec:geont_model}
 
-Figure~\ref{fig:geont_overview} summarizes the GeoNT measurement network, whose components are detailed in the following subsections.
+Figure~\ref{fig:geont_overview} summarizes the GeNT measurement network, whose components are detailed in the following subsections.
 
 \begin{figure}[!t]
     \centering
     \includegraphics[width=0.99\linewidth]{fig/geont/geont.pdf}
     \vspace{-5pt}
-    \caption{\textbf{Overview of the GeoNT measurement network.}
+    \caption{\textbf{Overview of the GeNT measurement network.}
     A common reference view is paired with multiple support views.
     For each support view, reference-to-support optical flow, flow confidence, intrinsics-normalized ray information, and the normalized monocular depth prior are embedded into geometry-native patch tokens.
-    A ViT-Base Geometry-Native Transformer aggregates these token fields through within-view and cross-view reasoning with camera-token conditioning, then predicts refined reference-view depth and scale-normalized relative pose measurements.
+    A ViT-Base Geometry-Native Transformer aggregates these token fields through within-view and cross-view reasoning with camera-token conditioning, then predicts refined reference-view depth and relative-pose measurements in the reference-view depth gauge.
     Metric scale is handled outside the network by the pose-scale graph.}
     \label{fig:geont_overview}
     \vspace{-12pt}
@@ -175,14 +169,14 @@ Geometry-native tokenization is motivated by the goal of bringing explicit corre
 Image-token Transformers are natural for recognition and feed-forward reconstruction, where the model must infer task-relevant structure from RGB appearance.
 In a SLAM-oriented monocular video setting, however, part of the geometric evidence can be made explicit before Transformer aggregation.
 Optical flow provides inter-view correspondences, flow confidence indicates their reliability, a monocular depth prior provides normalized scene-shape evidence, and camera intrinsics convert pixel grid into camera-normalized rays.
-GeoNT therefore tokenizes these geometry signals directly, so the backbone reasons over quantities already tied to the rigid-projection model rather than inferring geometry from appearance alone.
-This is also the main distinction from DBA-centered systems such as DROID-SLAM and MegaSaM: GeoNT does not keep a recurrent dense BA state as the primary representation.
+GeNT therefore tokenizes these geometry signals directly, so the backbone reasons over quantities already tied to the rigid-projection model rather than inferring geometry from appearance alone.
+This representation distinguishes GeNT from DBA-centered systems such as DROID-SLAM and MegaSaM: GeNT does not keep a recurrent dense BA state as its primary representation.
 It predicts learned depth and pose measurements from tokenized flow, uncertainty, ray, and depth-prior fields, then hands selected pose measurements to a separate graph.
 
 This representation also serves an architectural purpose.
-By exposing correspondence and depth-prior structure at the input, GeoNT shifts Transformer capacity from low-level matching toward resolving depth-motion ambiguity, multi-view consistency, and measurement confidence.
+By exposing correspondence and depth-prior structure at the input, GeNT shifts Transformer capacity from low-level matching toward resolving depth-motion ambiguity, multi-view consistency, and measurement confidence.
 This is important for integration with streaming SLAM systems, where the network is invoked repeatedly during tracking and local mapping.
-Throughout this chapter, GeoNT uses a lightweight ViT-Base backbone; the geometry-native tokens are intended to make this compact Transformer a practical aggregation module instead of relying on a larger visual-token backbone to infer geometry implicitly.
+Throughout this chapter, GeNT uses a lightweight ViT-Base backbone; the geometry-native tokens are intended to make this compact Transformer a practical aggregation module instead of relying on a larger visual-token backbone to infer geometry implicitly.
 
 The motion token is designed to express optical flow in camera-normalized coordinates.
 For a reference view $i$ and a support view $j$, a flow network predicts a dense flow field $\bm{F}_{ij}$ and a confidence field $\bm{Q}_{ij}$.
@@ -229,12 +223,12 @@ Unlike an RGB token, each token is already expressed in geometric coordinates an
 This design gives the Transformer a direct interface to temporal geometry while still allowing learned global reasoning over the reference view and its support keyframes.
 
 \subsection{Flow Frontend with ViT-Based Motion-Basis Initialization}
-Reliable optical flow is a prerequisite for geometry-native temporal reasoning, because GeoNT treats flow as the explicit correspondence measurement from which motion tokens are built.
+Reliable optical flow is a prerequisite for geometry-native temporal reasoning, because GeNT treats flow as the explicit correspondence measurement from which motion tokens are built.
 The challenge is that a keyframe-based mapper often compares views with a larger temporal baseline than adjacent video frames.
 Local optical-flow refinement is effective when the current estimate is already close to the correct match, but it can fail when the initial field places the correlation lookup outside the correct local basin.
-Wide-baseline matchers, such as RoMa~\cite{edstedt2024roma}, address a related but different operating point: they are designed to recover robust correspondences under large viewpoint changes, whereas GeoNT requires a dense, low-latency flow field whose quantities can be interpreted as camera-normalized angular motion.
+Wide-baseline matchers, such as RoMa~\cite{edstedt2024roma}, address a related but different setting: they are designed to recover robust correspondences under large viewpoint changes, whereas GeNT requires a dense, low-latency flow field whose quantities can be interpreted as camera-normalized angular motion.
 In this setting, even a few pixels of localization error can be significant.
-GeoNT therefore needs a frontend that combines geometry-aware wide-baseline initialization, dense subpixel refinement, and a confidence map expressed in a form suitable for Transformer aggregation.
+GeNT therefore needs a frontend that combines geometry-aware wide-baseline initialization, dense subpixel refinement, and a confidence map expressed in a form suitable for Transformer aggregation.
 
 The flow frontend is built around this two-stage correspondence design.
 First, it constructs pair features by reusing the monocular depth network's encoder feature and concatenating it with a ResNet18 image feature for both the reference and support views.
@@ -267,7 +261,7 @@ Thus, the monocular depth prior and camera intrinsics provide a structured hypot
 This is the reason for using a motion-basis initializer in a keyframe runtime.
 When a support keyframe is separated by several frames, a zero-flow or small-displacement start may make the recurrent updater search in the wrong correlation neighborhood.
 The basis field gives the initializer a set of camera-motion-shaped displacement modes before local refinement begins.
-It is not a generic sparse wide-baseline matcher: it produces a dense initialization in the same ray-and-depth coordinate convention used by the GeoNT tokens.
+It is not a generic sparse wide-baseline matcher: it produces a dense initialization in the same ray-and-depth coordinate convention used by the GeNT tokens.
 
 The flow frontend leverages a Transformer initializer to perform global reasoning over the projected reference-support pair feature and the embedded motion-basis feature.
 To preserve optical-flow estimation efficiency, this initializer adopts a ViT-small variant.
@@ -297,21 +291,21 @@ The final dense flow is then produced by iterative correlation/update refinement
 where $\bm{Q}_{ij}^{r}$ denotes the predicted confidence map.
 Starting from the basis-conditioned coarse field, the refinement module samples a correlation volume around the current estimate, predicts residual flow updates, and upsamples the result to the image resolution.
 Its update head also predicts information parameters, which are converted into the reliability channel used by the motion tokenizer together with intrinsics-normalized flow.
-The flow frontend therefore supplies the GeoNT measurement network with dense correspondence and confidence evidence in the same camera-normalized coordinate system used by the geometry tokens.
+The flow frontend therefore supplies the GeNT measurement network with dense correspondence and confidence evidence in the same camera-normalized coordinate system used by the geometry tokens.
 
 \subsection{Geometry Patch Tokens and Camera-Token Conditioning}
 Dense correspondence becomes a geometry measurement only after it is interpreted with camera context.
-For a reference view $i$ and a support view $j$ in the temporal neighborhood, GeoNT observes a dense motion field and estimates how the measured pixel displacement can be explained by reference-view depth and relative camera motion.
+For a reference view $i$ and a support view $j$ in the temporal neighborhood, GeNT observes a dense motion field and estimates how the measured pixel displacement can be explained by reference-view depth and relative camera motion.
 Feed-forward geometry Transformers, such as VGGT~\cite{wang2025vggt} and DUSt3R~\cite{wang2024dust3r}, often place camera tokens and image or patch tokens in a common sequence.
 This homogeneous token treatment is reasonable for offline reconstruction from a fixed set of views: all images and cameras are available simultaneously, camera information can act as an additional global cue, and self-attention can jointly update view, camera, and scene representations.
-The streaming measurement problem in GeoNT is more structured.
+By contrast, GeNT addresses a more structured streaming measurement problem.
 The field $\bm{P}_{ij}$ in Equation~\ref{eq:geont_patch_token} represents spatially dense measured evidence, including flow, confidence, ray coordinates, and normalized depth, while the camera token $c_{ij}$ carries compact pair-level context for the reference-support pair.
 The camera token therefore summarizes motion information from the patch tokens and controls how local pixel displacements are converted into depth and relative camera motion.
 Keeping this token separate avoids treating pair-level camera context as just another spatial patch.
 The same local flow vector can imply different depth or translation changes under different ray directions, intrinsics, and pair-level motion context; a compact camera token gives the network a place to maintain that global interpretation while the patch tokens preserve dense evidence.
 
 Let $\bm{z}_{ij}^{\ell}$ denote the geometry patch tokens and $c_{ij}^{\ell}$ denote the camera token at Transformer layer $\ell$.
-GeoNT prepends the camera token to the patch-token sequence so that it can aggregate pair-level motion context through attention.
+GeNT prepends the camera token to the patch-token sequence so that it can aggregate pair-level motion context through attention.
 At the same time, the camera token generates adaptive shift, scale, and gate parameters for the patch-token updates, in the spirit of DiT-style adaptive layer-normalization conditioning~\cite{peebles2023scalable}.
 For the attention sublayer,
 \begin{equation}
@@ -354,16 +348,16 @@ This conditioning design lets the camera token progressively aggregate pair-leve
 Compared with homogeneous token mixing, it preserves the distinction between local measured geometry and compact pair-level conditioning: the camera cue modulates patch-token updates, rather than being handled as another peer token whose role is determined only through self-attention.
 The design is therefore closer to adaptive conditioning than to simply adding a camera token to a larger image-token sequence.
 By default, $c_{ij}$ is initialized from a learnable base embedding and acquires pair-specific meaning through attention to the motion tokens.
-When an external relative-pose estimate is available, GeoNT can encode it as a small delta around this learned base token; in the current thesis, this pose-conditioned initialization is supporting infrastructure rather than the central claim.
+When an external relative-pose estimate is available, GeNT can encode it as a small delta around this learned base token; in the current thesis, this pose-conditioned initialization is supporting infrastructure rather than the central claim.
 The main claim is the separated camera-token conditioning mechanism for camera-aware geometry-token aggregation.
 
 \subsection{Multi-View Aggregation}
 Multi-view aggregation addresses the ambiguity of relying on a single temporal support view.
-As shown in Figure~\ref{fig:geont_overview}, GeoNT aggregates several reference-support token fields for the same reference view.
+As shown in Figure~\ref{fig:geont_overview}, GeNT aggregates several reference-support token fields for the same reference view.
 One support keyframe may have weak parallax, another may be affected by occlusion, and a third may contain motion from dynamic objects.
 Using several support keyframes gives the measurement network multiple motion observations for the same reference-depth representation.
 
-GeoNT implements this aggregation with two attention modes.
+GeNT implements this aggregation with two attention modes.
 For a reference view $i$ and support set $\mathcal{N}(i)$, the input contains one geometry-token field for each reference-support pair $(i,j)$, where $j\in\mathcal{N}(i)$.
 Within-view attention applies self-attention independently inside each pair field, allowing the motion tokens, depth tokens, and camera token for $(i,j)$ to refine a local geometric explanation without mixing support views.
 Cross-view, or global, attention concatenates the token fields associated with the same reference view and applies self-attention across all support pairs.
@@ -375,21 +369,21 @@ The later stages alternate between within-view and cross-view attention: one cro
 Overall, the schedule uses a $2{:}1$ ratio between within-view and cross-view attention, prioritizing local relation reasoning while still allowing temporal evidence exchange.
 This follows the broad alternating-attention pattern used in recent feed-forward geometry Transformers such as VGGT~\cite{wang2025vggt} and DepthAnything3~\cite{lin2026depth}, while adapting it to geometry-native tokens and streaming keyframe relations.
 The resulting design reduces the cost of global attention while still allowing periodic exchange of temporal evidence.
-This efficiency matters in streaming inference, so GeoNT uses the ViT-Base configuration for the Geometry-Native Transformer as a compact aggregation backbone.
+This efficiency matters in streaming inference, so GeNT uses the ViT-Base configuration for the Geometry-Native Transformer as a compact aggregation backbone.
 
 This design provides a structured route from pairwise geometry to temporal consensus.
 Early within-view layers refine flow-depth evidence and camera-token conditioning for each support pair before expensive cross-view mixing.
 Later cross-view layers compare temporal neighbors to support a shared reference-depth representation and a set of compatible relative pose measurements.
-Inconsistent flow, occlusion, or independently moving objects may appear as conflicting evidence in the token representation, but GeoNT does not implement an explicit attention-time view-selection rule.
+Inconsistent flow, occlusion, or independently moving objects may appear as conflicting evidence in the token representation, but GeNT does not implement an explicit attention-time view-selection rule.
 The output confidence estimates instead report the reliability of the final depth and pose measurements for graph weighting; they are not a confidence-based reweighting mechanism inside Transformer aggregation.
 
 \subsection{Depth, Pose, and Confidence Heads}
-The output heads in GeoNT convert the shared geometry representation into compact depth and pose measurements.
+The output heads in GeNT convert the shared geometry representation into compact depth and pose measurements.
 This design follows from the representation: by the end of the Geometry-Native Transformer, the tokens already encode camera-conditioned temporal geometry across the local support set.
 The heads therefore read out the required measurements from the final geometry representation rather than performing heavy visual reconstruction.
 This differs from visual feature Transformers, where the decoder often must fuse multi-scale appearance features before dense geometry can be recovered.
 
-GeoNT uses several confidence-like quantities with different semantics.
+GeNT uses several confidence-like quantities with different semantics.
 The flow confidence $q_{ij}$ is an input-side correspondence reliability produced by the frontend and embedded into the motion tokens.
 The depth-observability score $g_d$ is an internal support-view gate used only to fuse pairwise token fields for depth prediction.
 The output depth confidence $\hat{\bm{C}}_i$ is a dense reliability estimate attached to the predicted reference-view depth.
@@ -399,7 +393,7 @@ These quantities are not interchangeable, and a high value in one does not autom
 The depth head converts the temporally aggregated geometry representation into a dense refined depth map and a dense confidence map for the reference view.
 It reads the final multi-view geometry-token representation produced by the aggregation backbone.
 For a reference view $i$ and each support keyframe $j\in\mathcal{N}(i)$, this representation contains a camera-conditioned patch-token field $\bm{z}_{ij}^{\star}$ that encodes confidence estimates and depth evidence for that pair.
-Before dense prediction, GeoNT integrates the depth evidence from multiple support keyframes into a coherent reference-view depth representation through learned gate-based aggregation.
+Before dense prediction, GeNT integrates the depth evidence from multiple support keyframes into a coherent reference-view depth representation through learned gate-based aggregation.
 Let $H\times W$ denote the reference-view resolution and $\bm{p}$ index a location on the $H/16\times W/16$ ViT patch grid.
 The aggregation produces a single reference-view geometry field $\bar{\bm{z}}_i$ on this patch grid:
 \begin{equation}
@@ -431,31 +425,31 @@ In parallel, $\mathcal{E}_8$ embeds the normalized depth prior and its validity 
 The fusion module $\mathcal{F}_d$ combines these two features channel-wise and applies a lightweight Transformer/MLP-style readout on the $1/8$ grid, yielding the fused representation $\bm{\phi}_i$.
 The final predictor $h_d$ outputs depth and confidence values for the $8\times8$ image block associated with each $1/8$-scale grid cell, and the pixel shuffle operation $\mathcal{R}_8$ rearranges these per-block predictions to restore the dense maps $\hat{\bm{D}}_i$ and $\hat{\bm{C}}_i$ at the preprocessed reference-view resolution $H\times W$.
 This makes the token-to-image recovery explicit: temporal depth evidence is carried by the aggregated geometry tokens, while local scene-shape detail that may be weakened by patch-level compression is reintroduced through the residual normalized-depth branch.
-Because the geometry-native aggregation backbone has already exchanged temporal evidence across support keyframes, dense recovery can remain lightweight and does not require a heavy DPT-style multi-layer visual fusion decoder~\cite{ranftl2021vision} in the default GeoNT design.
+Because the geometry-native aggregation backbone has already exchanged temporal evidence across support keyframes, dense recovery can remain lightweight and does not require a heavy DPT-style multi-layer visual fusion decoder~\cite{ranftl2021vision} in the default GeNT design.
 
 The pose head reads motion measurements from the compact camera tokens.
 For each reference-support pair, the final camera token provides a pair-level representation that feeds a lightweight pose decoder for relative translation, quaternion rotation, and translation/rotation confidence.
 The pose confidence values express the reliability of the final neural pose measurements for graph optimization; they are uncertainty estimates, not a mechanism for reweighting views inside multi-view attention.
-Thus, the heads are deliberately compact: they expose refined depth, pose, and confidence from the shared GeoNT representation, while the central contribution remains the geometry-native Transformer representation and camera-conditioned aggregation.
+Thus, the heads are deliberately compact: they expose refined depth, pose, and confidence from the shared GeNT representation, while the central contribution remains the geometry-native Transformer representation and camera-conditioned aggregation.
 
-\subsection{Training the GeoNT Measurement Network}
-GeoNT is trained to produce temporal geometry measurements that can be used by a streaming local map.
+\subsection{Training the GeNT Measurement Network}
+GeNT is trained to produce temporal geometry measurements that can be used by a streaming local map.
 The supervision must couple scene shape with camera motion: a depth estimate is useful only if, together with the predicted relative pose, it explains the observed correspondence between views.
-Accordingly, training asks GeoNT to predict three kinds of measurements for a reference view and its support views: a refined normalized depth map, relative poses whose translation magnitude is expressed in the reference view's normalized depth scale, and reliability estimates for the depth and pose outputs.
+Accordingly, training asks GeNT to predict three kinds of measurements for a reference view and its support views: a refined normalized depth map, relative poses whose translation magnitude is expressed in the reference view's normalized depth scale, and reliability estimates for the depth and pose outputs.
 The flow frontend is trained in the same measurement setting, because its correspondence estimates are the motion evidence from which the geometry tokens are formed.
 
 Training samples are constructed from video sequences with ground-truth camera poses, depth maps, and intrinsics.
 Following the frame-graph training practice of DROID-SLAM~\cite{teed2021droid}, supervision is organized by a graph over geometrically connected frames rather than by adjacent frame pairs alone.
 Frames and graph edges are selected using geometric covisibility measured by induced optical-flow distance, so useful training pairs have both sufficient overlap and meaningful image motion.
-Each directed graph edge defines a reference-support pair for GeoNT, and the outgoing edges of a reference frame provide the support set used for multi-view aggregation.
-This construction matches the intended measurement setting: GeoNT learns from video frames that are connected by observable geometry, not from unordered image sets or from a fixed temporal spacing.
+Each directed graph edge defines a reference-support pair for GeNT, and the outgoing edges of a reference frame provide the support set used for multi-view aggregation.
+This construction matches the intended measurement setting: GeNT learns from video frames that are connected by observable geometry, not from unordered image sets or from a fixed temporal spacing.
 
 During training, the forward path follows the measurement network described above.
 The monocular geometry model provides a normalized depth prior for each frame.
 The flow frontend predicts dense flow and flow reliability on the sampled graph edges; these quantities are embedded with camera-normalized ray coordinates to form geometry patch tokens.
 The Geometry-Native Transformer processes the reference-support token fields with separate camera tokens and outputs refined normalized depth, relative pose measurements, depth reliability maps, and pose reliability values.
 For a graph edge from reference view $i$ to support view $j$, the translation target is compared in the normalized depth scale of view $i$, while rotation is supervised through the quaternion representation.
-This convention keeps pose supervision compatible with the normalized-depth representation used by the GeoNT measurement system.
+This convention keeps pose supervision compatible with the normalized-depth representation used by the GeNT measurement system.
 
 The training objective is a compact multi-task loss,
 \begin{equation}
@@ -479,6 +473,8 @@ Reliability weighting follows a heteroscedastic uncertainty interpretation: resi
 
 Frame-graph supervision and projective geometric losses provide the training structure for these feed-forward measurement readouts~\cite{teed2021droid}.
 The trained outputs are refined reference depth, relative pose in the reference depth scale, and reliability estimates that can be used by the streaming pose-scale graph.
+The training corpus comprises TartanAir~\cite{tartanair2020iros}, ARKitScenes~\cite{baruch2021arkitscenes}, Dynamic Replica~\cite{karaev2023dynamicstereo}, Point-Odessey~\cite{zheng2023pointodyssey}, and Waymo, spanning diverse camera motions, scene geometries, and indoor and outdoor environments.
+This diversity provides the supervision needed to learn geometry-native temporal measurements across varied visual conditions.
 The next section explains how these measurements become transient tracking estimates, keyframe-aligned depth, and graph constraints in the streaming runtime.
 
 \section{Streaming Local Mapping Runtime}
@@ -488,20 +484,20 @@ The next section explains how these measurements become transient tracking estim
     \centering
     \includegraphics[width=0.99\linewidth]{fig/geont/runtime.pdf}
     \vspace{-5pt}
-    \caption{\textbf{Overview of the GeoNT streaming local mapping runtime.}
+    \caption{\textbf{Overview of the GeNT streaming local mapping runtime.}
     Incoming frames first support low-latency tracking inference for immediate depth and motion.
     Selected frames become keyframe nodes in the active local map.
-    A selected keyframe receives temporal refinement after sufficient neighboring support keyframes are available, allowing GeoNT to compute one consolidated multi-view depth estimate.
+    A selected keyframe receives temporal refinement after sufficient neighboring support keyframes are available, allowing GeNT to compute one consolidated multi-view depth estimate.
     Pose-scale optimization then smooths keyframe motion and metric depth scale while dense geometry remains attached to keyframes.}
     \label{fig:geont_runtime}
     \vspace{-10pt}
 \end{figure}
 
 \subsection{Runtime Overview}
-GeoNT is deployed as a keyframe-based streaming mapper rather than an offline sequence processor.
+GeNT is deployed as a keyframe-based streaming mapper rather than an offline sequence processor.
 Figure~\ref{fig:geont_runtime} illustrates how incoming frames become immediate tracking estimates, keyframe-aligned local geometry, pose-scale graph constraints, and a recovered frame-level trajectory.
 The runtime is organized around a mapping contract.
-For each incoming frame, GeoNT can provide immediate depth and relative motion with respect to recent keyframes, which supports low-latency response before any keyframe mapping decision is made.
+For each incoming frame, GeNT can provide immediate depth and relative motion with respect to recent keyframes, which supports low-latency response before any keyframe mapping decision is made.
 Only selected frames become keyframes, and dense geometry is maintained only at keyframes in the active local map.
 After sufficient temporal support becomes available, each selected keyframe receives a single multi-view depth consolidation.
 Pose graph optimization then adjusts keyframe pose and metric scale, but it does not change the normalized keyframe depth map.
@@ -510,7 +506,7 @@ Figure~\ref{fig:geont_active_local_map} illustrates the dense geometry maintaine
 
 \begin{table}[!t]
     \centering
-    \caption{\textbf{Runtime stages for GeoNT streaming local mapping.}
+    \caption{\textbf{Runtime stages for GeNT streaming local mapping.}
     The table summarizes how online tracking, keyframe depth estimation, and pose-scale optimization remain separated.}
     \label{tab:geont_runtime_stages}
     \small
@@ -521,7 +517,7 @@ Figure~\ref{fig:geont_active_local_map} illustrates the dense geometry maintaine
         \textbf{Mapping stage} & \textbf{Estimation role} & \textbf{State or measurement} \\
         \midrule
         Frame geometry inputs &
-        Measurement evidence for GeoNT &
+        Measurement evidence for GeNT &
         Each frame is represented by fixed intrinsics, a normalized monocular depth prior, a validity cue, and flow-based correspondence evidence. \\
         Support selection &
         Local temporal context with useful parallax and overlap &
@@ -540,7 +536,7 @@ Figure~\ref{fig:geont_active_local_map} illustrates the dense geometry maintaine
         Temporal and optional proximity measurements provide reference-scale-normalized pose constraints with confidence weights; these constraints do not modify dense geometry. \\
         Pose-scale optimization &
         Local pose-scale consistency &
-        PGO optimizes keyframe poses and node scales under the GeoNT edge convention while keeping all keyframe depth maps fixed. \\
+        PGO optimizes keyframe poses and node scales under the GeNT edge convention while keeping all keyframe depth maps fixed. \\
         Final mapping state &
         Local map and trajectory estimate &
         The final mapping state consists of keyframe poses, keyframe depths, optimized scales, edge statistics, and a recovered full-frame trajectory. \\
@@ -551,17 +547,17 @@ Figure~\ref{fig:geont_active_local_map} illustrates the dense geometry maintaine
 \begin{figure}[!t]
     \centering
     \includegraphics[width=0.99\linewidth]{fig/geont/local_map_twopanel.pdf}
-    \caption{\textbf{Active local map in GeoNT.}
+    \caption{\textbf{Active local map in GeNT.}
     The visualization shows the current keyframe together with its reconstructed dense local geometry.
     It illustrates the keyframe-aligned mapping output produced after temporal multi-view aggregation, rather than the sparse pose-scale graph used for optimization.
-    This view emphasizes the dense geometric state that GeoNT contributes to the active local map.}
+    This view emphasizes the dense geometric state that GeNT contributes to the active local map.}
     \label{fig:geont_active_local_map}
 \end{figure}
 
 \subsection{Frontend Tracking and Keyframe Admission}
 Frontend tracking is the low-latency stage that provides immediate depth and pose estimates for each incoming frame.
 The first frame initializes the local map with its monocular depth prior.
-For later frames, GeoNT tracking aggregation relates the current frame to recent $K$ keyframes, producing refined depth and relative poses.
+For later frames, GeNT tracking aggregation relates the current frame to recent $K$ keyframes, producing refined depth and relative poses.
 The tracking evidence also supports keyframe admission as a secondary decision: optical-flow magnitude and tracking validity indicate whether the current frame adds a reliable and distinct geometric view.
 Frames that are not selected as keyframes keep their estimates as transient tracking quantities for low-latency robotic response; dense geometry remains keyframe-aligned in the active local map.
 Their relative poses still provide the frame-to-keyframe relations needed to reconstruct the full-frame trajectory after keyframe optimization.
@@ -579,7 +575,7 @@ Backend temporal refinement improves a selected keyframe after sufficient tempor
 The frontend depth estimate serves low-latency response, but it may initially rely on only one or two recent neighbors.
 The local mapping radius $r$ defines when a keyframe has sufficient temporal support for consolidation.
 Keyframe $i$ is refined once the active keyframe sequence includes keyframe $i+r$, so that its temporal support set contains the neighboring views needed for multi-view aggregation.
-GeoNT then aggregates reference keyframe $i$ with its temporal support set once, producing the consolidated keyframe-aligned depth map $\bm{D}_i$.
+GeNT then aggregates reference keyframe $i$ with its temporal support set once, producing the consolidated keyframe-aligned depth map $\bm{D}_i$.
 The keyframe scale is updated by matching the mean normalized depth before and after this multi-view refinement:
 \begin{equation}
     s_i \leftarrow
@@ -595,14 +591,14 @@ where $\Omega_i$ denotes valid non-sky pixels.
 This update keeps the keyframe's average valid depth scale aligned with the original monocular gauge while allowing temporal refinement to change local structure.
 The resulting scale becomes the keyframe's node-scale estimate before graph optimization.
 
-Temporal refinement also determines which GeoNT measurements enter the pose graph.
-During the multi-view aggregation that consolidates a keyframe depth estimate, GeoNT predicts keyframe-relative poses to its support keyframes together with reliability weights.
+Temporal refinement also determines which GeNT measurements enter the pose graph.
+During the multi-view aggregation that consolidates a keyframe depth estimate, GeNT predicts keyframe-relative poses to its support keyframes together with reliability weights.
 Each directed keyframe relation is represented as one weighted pose-graph factor.
-This schedule keeps the local map interpretable: each keyframe receives one multi-view consolidated dense estimate, and each GeoNT relative-pose measurement becomes a graph factor only after the supporting temporal neighborhood has been observed.
+This schedule keeps the local map interpretable: each keyframe receives one multi-view consolidated dense estimate, and each GeNT relative-pose measurement becomes a graph factor only after the supporting temporal neighborhood has been observed.
 
 \subsection{Depth Lifecycle and Metric Interpretation}
 The mapping formulation separates the monocular depth prior, the keyframe-aligned depth map, and the optimized metric scale.
-The normalized monocular prior $\tilde{\bm{D}}_i$ is the depth input to GeoNT and is not replaced by later keyframe estimates.
+The normalized monocular prior $\tilde{\bm{D}}_i$ is the depth input to GeNT and is not replaced by later keyframe estimates.
 The keyframe-aligned depth map $\bm{D}_i$ represents the normalized scene shape associated with keyframe $i$ in the active local map.
 For keyframes with sufficient temporal support, backend multi-view aggregation consolidates this representation across neighboring views.
 The node scale $s_i$ is the graph-optimized scalar that gives this normalized depth representation its metric interpretation through Equation~\ref{eq:geont_metric_depth}.
@@ -617,10 +613,10 @@ Dense geometry is therefore keyframe-aligned, while transient non-keyframe depth
 \label{sec:geont_pgo}
 
 \subsection{Graph State and Residuals}
-Pose graph optimization is a consistency layer over GeoNT measurements, not the dense reconstruction engine of the system.
+Pose graph optimization is a consistency layer over GeNT measurements, not the dense reconstruction engine of the system.
 The graph optimizes keyframe poses and node scales while leaving the keyframe normalized depth maps fixed.
 Let $\bm{T}_i \in SE(3)$ be the pose of keyframe $i$, and let $\ell_i=\log s_i$ be its log scale.
-For each directed edge $(i,j)$, GeoNT provides a measured relative pose $(\hat{\bm{t}}_{ij},\hat{\bm{R}}_{ij})$ and confidence weights.
+For each directed edge $(i,j)$, GeNT provides a measured relative pose $(\hat{\bm{t}}_{ij},\hat{\bm{R}}_{ij})$ and confidence weights.
 The translation residual follows the reference-scale-normalized convention:
 \begin{equation}
     \bm{r}^{t}_{ij}
@@ -668,7 +664,7 @@ The full objective is
     \left(r_i^s\right)^2,
     \label{eq:geont_pgo_objective}
 \end{equation}
-where $\bm{W}_{ij}$ is built from GeoNT translation and rotation confidence, $\rho$ is a robust penalty, and $\lambda_s$ is the scale-prior strength.
+where $\bm{W}_{ij}$ is built from GeNT translation and rotation confidence, $\rho$ is a robust penalty, and $\lambda_s$ is the scale-prior strength.
 The anchor pose is fixed by excluding its pose delta from optimization.
 The anchor scale remains optimized under the soft scale prior.
 This objective uses neural relative-pose measurements as soft constraints and uses pose confidence to decide how strongly each inserted edge should influence the graph.
@@ -676,20 +672,21 @@ The graph weight $\bm{W}_{ij}$ is an edge-level diagonal information matrix deri
 It does not introduce dense photometric or geometric residuals over all pixels.
 
 \subsection{Joint SE(3)-Scale Optimization}
-The pose-scale graph is optimized jointly because GeoNT translation measurements are expressed in the normalized depth gauge of the reference keyframe.
+The pose-scale graph is optimized jointly because GeNT translation measurements are expressed in the normalized depth gauge of the reference keyframe.
 A change in the node scale therefore changes the metric interpretation of both the keyframe depth map and the outgoing translation residuals.
 The graph consequently estimates the $SE(3)$ keyframe poses and the log-scales $\ell_i$ in a single objective, balancing reference-scale-normalized pose residuals against the soft node-scale prior in Equation~\ref{eq:geont_pgo_objective}.
 This joint formulation smooths local motion and metric scale while leaving the keyframe-aligned normalized depth maps fixed.
-PGO is therefore a consistency layer over GeoNT relative-pose measurements and keyframe scales, rather than a late dense reconstruction stage.
+PGO is therefore a consistency layer over GeNT relative-pose measurements and keyframe scales, rather than a late dense reconstruction stage.
 
 \section{Evaluation Protocol and Analysis}
 \label{sec:geont_eval_protocol}
 
 \subsection{Local Mapping Evaluation Scope}
-Since GeoNT is designed as a local mapping module, the evaluation is organized around the quantities that make the active local map geometrically useful: keyframe-aligned depth for local dense structure and pose-graph factors for pose-scale consistency.
+Since GeNT is positioned as a learned measurement layer rather than a complete SLAM system, the evaluation is organized around the quantities that make the active local map geometrically useful: keyframe-aligned depth for local dense structure and pose-graph factors for pose-scale consistency.
 The first question is whether temporal multi-view aggregation improves the depth maps associated with selected keyframes relative to the monocular prior.
-The second question is whether the GeoNT relative-pose measurements that become pose-graph factors are geometrically reliable, with translation evaluated after alignment to the ground-truth metric scale.
-This scope matches the present experimental stage: the chapter evaluates keyframe depth under a consistent video-level scale and measures GeoNT relative-pose factors directly.
+The second question is whether the GeNT relative-pose measurements that become pose-graph factors are geometrically reliable, with translation evaluated after alignment to the ground-truth metric scale.
+A complementary video-depth benchmark evaluates dense outputs for incoming frames and tests generalization across synthetic, indoor, and outdoor sequences.
+This scope matches the present experimental stage: the chapter evaluates keyframe depth under a consistent video-level scale, dense video depth under a shared sequence-level scale, and GeNT relative-pose factors directly.
 
 \subsection{Keyframe Depth Evaluation}
 Depth evaluation compares keyframe-aligned depth maps against ground-truth depth on selected keyframes.
@@ -699,7 +696,7 @@ All predicted keyframe depths in the video are evaluated as $\alpha_v \bm{D}_i$ 
 The scale is not re-estimated separately for each keyframe, so the protocol evaluates keyframe depth quality under a consistent sequence-level gauge.
 
 The reported metrics are the standard depth errors, including AbsRel, RMSE, RMSE-log, and $\delta$ accuracy thresholds.
-The depth comparison includes the MoGe2~\cite{wang2025moge2} monocular prior, DROID-SLAM~\cite{teed2021droid}, DepthAnything3~\cite{lin2026depth} in sliding-window mode, and the GeoNT keyframe-aligned depth after backend multi-view aggregation.
+The depth comparison includes the MoGe2~\cite{wang2025moge2} monocular prior, DROID-SLAM~\cite{teed2021droid}, DepthAnything3~\cite{lin2026depth} in sliding-window mode, and the GeNT keyframe-aligned depth after backend multi-view aggregation.
 These baselines separate the empirical roles of single-view depth prior, dense BA-centered SLAM depth, and feed-forward multi-view geometry in a chunked sliding-window setting.
 The DepthAnything3 setting is therefore not a strict low-latency streaming system; it provides a strong feed-forward geometry reference although operating with substantial window-level latency.
 
@@ -707,7 +704,7 @@ The DepthAnything3 setting is therefore not a strict low-latency streaming syste
     \centering
     \caption{\textbf{Keyframe depth evaluation on TartanAir.}
     Metrics are averaged over 32 sequences.
-    GeoNT is evaluated using the keyframe-aligned depth after backend multi-view aggregation.}
+    GeNT is evaluated using the keyframe-aligned depth after backend multi-view aggregation.}
     \label{tab:geont_depth_eval}
     \small
     \setlength{\tabcolsep}{5pt}
@@ -725,18 +722,57 @@ The DepthAnything3 setting is therefore not a strict low-latency streaming syste
         MoGe2 prior~\cite{wang2025moge2} & 0.084 & 2.798 & 0.169 & 0.914 & 0.965 & 0.980 \\
         DROID-SLAM~\cite{teed2021droid} & 0.414 & 34.080 & 0.324 & 0.854 & 0.917 & 0.947 \\
         DepthAnything3 (sliding-window)~\cite{lin2026depth} & 0.073 & 2.804 & 0.151 & \textbf{0.936} & 0.970 & 0.982 \\
-        GeoNT (ours) & \textbf{0.066} & \textbf{2.503} & \textbf{0.142} & 0.936 & \textbf{0.971} & \textbf{0.984} \\
+        GeNT (ours) & \textbf{0.060} & \textbf{2.503} & \textbf{0.142} & 0.940 & \textbf{0.973} & \textbf{0.984} \\
         \bottomrule
     \end{tabular*}
 \end{table}
 
-Table~\ref{tab:geont_depth_eval} shows that GeoNT improves the keyframe-aligned depth over the monocular prior and over the chunked feed-forward baseline on the main error metrics.
-The DROID-SLAM row provides concrete evidence for the chapter motivation: although dense BA is effective for pose estimation, its depth errors are substantially larger in this protocol, with AbsRel increasing from 0.066 for GeoNT to 0.414 and RMSE increasing from 2.503 to 34.080.
+Table~\ref{tab:geont_depth_eval} shows that GeNT improves the keyframe-aligned depth over the monocular prior and over the chunked feed-forward baseline on the main error metrics.
+The DROID-SLAM row provides concrete evidence for the chapter motivation: although dense BA is effective for pose estimation, its depth errors are substantially larger in this protocol, with AbsRel increasing from 0.066 for GeNT to 0.414 and RMSE increasing from 2.503 to 34.080.
 This gap is especially visible in distant or weakly textured regions, where photometric BA has limited depth leverage and tends to produce less reliable dense geometry.
 Overall, the result supports the local-mapping motivation: temporal support can improve the dense geometry attached to selected keyframes, while graph-compatible pose measurements are evaluated separately in the next subsection.
 
+\subsection{Video Depth Evaluation}
+To assess dense depth quality beyond the TartanAir evaluation, we additionally evaluate GeNT on the Sintel, Bonn, and KITTI video benchmarks without target-domain fine-tuning.
+The model processes each sequence in streaming order and produces a dense depth estimate for every incoming frame.
+Following a sequence-level video-depth protocol, one scale factor is estimated for each sequence and shared across all of its evaluated frames; scale is therefore not re-estimated independently for individual frames.
+This preserves the temporal consistency requirement of the GeNT formulation while allowing comparison across synthetic dynamic scenes, indoor handheld sequences, and outdoor driving scenes.
+
+We report absolute relative error (AbsRel) and the inlier ratios $\delta_{1.03}$ and $\delta_{1.25}$.
+For a threshold $\tau$, $\delta_{\tau}$ denotes the fraction of valid pixels for which the ratio between predicted and ground-truth depth lies below $\tau$.
+Importantly, GeNT is evaluated causally: each depth estimate is produced from the frames available at the current time, without access to the complete sequence.
+This streaming constraint distinguishes GeNT from the batch-oriented methods in the comparison, which aggregate a pre-collected set of frames before producing video geometry.
+
+\begin{table}[!t]
+    \centering
+    \caption{\textbf{Video-depth evaluation on Sintel, Bonn, and KITTI.}
+    Each benchmark is evaluated without target-domain fine-tuning using one scale alignment per sequence.
+    Values are reported as fractions; lower AbsRel and higher $\delta$ values are better.}
+    \label{tab:geont_video_depth_eval}
+    \scriptsize
+    \setlength{\tabcolsep}{2.5pt}
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccccccc@{}}
+        \toprule
+        \textbf{Method} & \multicolumn{3}{c}{\textbf{Sintel}} & \multicolumn{3}{c}{\textbf{Bonn}} & \multicolumn{3}{c}{\textbf{KITTI}} \\
+        \cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10}
+        & \textbf{AbsRel}$\downarrow$ & \textbf{$\delta_{1.03}$}$\uparrow$ & \textbf{$\delta_{1.25}$}$\uparrow$
+        & \textbf{AbsRel}$\downarrow$ & \textbf{$\delta_{1.03}$}$\uparrow$ & \textbf{$\delta_{1.25}$}$\uparrow$
+        & \textbf{AbsRel}$\downarrow$ & \textbf{$\delta_{1.03}$}$\uparrow$ & \textbf{$\delta_{1.25}$}$\uparrow$ \\
+        \midrule
+        Spann3R & 0.552 & 0.073 & 0.463 & 0.055 & 0.409 & 0.978 & 0.247 & 0.104 & 0.644 \\
+        CUT3R & 0.584 & 0.096 & 0.466 & 0.051 & 0.474 & 0.980 & 0.136 & 0.180 & 0.810 \\
+        VGGT & 0.280 & 0.136 & 0.618 & 0.036 & 0.632 & 0.984 & 0.082 & 0.404 & 0.909 \\
+        $\pi^{3}$ & 0.319 & 0.133 & 0.668 & 0.030 & 0.720 & 0.988 & 0.036 & 0.595 & 0.988 \\
+        AMB3R & 0.236 & 0.140 & 0.627 & 0.033 & 0.660 & 0.985 & 0.041 & 0.538 & 0.983 \\
+        \midrule
+        GeNT (ours) & 0.227& 0.204& 0.692& 0.032&0.650 & 0.985 & 0.054 & 0.416 & 0.977\\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
 \subsection{Graph Factor Evaluation}
-Graph factor evaluation measures GeoNT relative-pose measurements directly in the graph domain.
+Graph factor evaluation measures GeNT relative-pose measurements directly in the graph domain.
 For each directed keyframe factor $(i,j)$, the predicted relative rotation is compared with the ground-truth relative rotation by geodesic rotation error.
 The predicted translation is produced in the reference-scale-normalized convention used by the graph, so the translation vector is scale-aligned to the corresponding ground-truth relative translation before computing its metric error.
 For each directed factor $(i,j)$, let $\bm{t}^{\mathrm{gt}}_{ij}=\operatorname{trans}(\bm{T}^{\mathrm{gt}}_j(\bm{T}^{\mathrm{gt}}_i)^{-1})$.
@@ -751,11 +787,11 @@ The per-factor alignment scale is
     \label{eq:geont_factor_scale_alignment}
 \end{equation}
 Translation error is then measured between $\beta_{ij}\hat{\bm{t}}_{ij}$ and $\bm{t}^{\mathrm{gt}}_{ij}$, while translation direction error is evaluated directly because it is scale invariant.
-This protocol asks whether each GeoNT factor provides a geometrically meaningful local motion constraint after the per-edge monocular scale ambiguity has been removed.
+This protocol asks whether each GeNT factor provides a geometrically meaningful local motion constraint after the per-edge monocular scale ambiguity has been removed.
 
 \begin{table}[!t]
     \centering
-    \caption{\textbf{GeoNT graph-factor evaluation on TartanAir.}
+    \caption{\textbf{GeNT graph-factor evaluation on TartanAir.}
     Metrics are computed over 73,919 directed keyframe factors from 32 sequences.
     Translation error is computed after directly aligning each factor translation to its ground-truth relative translation using Equation~\ref{eq:geont_factor_scale_alignment}.}
     \label{tab:geont_factor_eval}
@@ -773,9 +809,9 @@ This protocol asks whether each GeoNT factor provides a geometrically meaningful
     \end{tabular*}
 \end{table}
 
-Table~\ref{tab:geont_factor_eval} shows that the GeoNT factors provide accurate relative rotations and translation directions, which are the two most directly scale-invariant parts of the learned motion measurement.
+Table~\ref{tab:geont_factor_eval} shows that the GeNT factors provide accurate relative rotations and translation directions, which are the two most directly scale-invariant parts of the learned motion measurement.
 The translation confidence also behaves as a useful reliability signal for graph optimization: factors in the highest confidence quartile have a mean scale-aligned translation error of 0.006, compared with 0.026 for the lowest confidence quartile.
-This confidence-error relation supports using learned factor weights in the pose-scale graph, while keeping the evaluation centered on local GeoNT measurement.
+This confidence-error relation supports using learned factor weights in the pose-scale graph, while keeping the evaluation centered on local GeNT measurement.
 
 Figure~\ref{fig:geont_odometry_trajectory} visualizes the cumulative behavior obtained by integrating the local relative-pose estimates over one representative sequence.
 The estimated trajectory follows the ground-truth path after Sim(3) alignment, showing that the local factors provide usable odometry constraints.
@@ -784,8 +820,8 @@ At the same time, the remaining deviation reflects the expected limitation of pu
 \begin{figure}[!t]
     \centering
     \includegraphics[width=0.76\linewidth]{fig/geont/odometry_trajectory_p011.pdf}
-    \caption{\textbf{Odometry trajectory from GeoNT relative-pose integration.}
-    The plot compares the GeoNT odometry trajectory with ground truth on the TartanAir abandonedfactory/Easy/P011 sequence.
+    \caption{\textbf{Odometry trajectory from GeNT relative-pose integration.}
+    The plot compares the GeNT odometry trajectory with ground truth on the TartanAir abandonedfactory/Easy/P011 sequence.
     The trajectory is Sim(3)-aligned for visualization and is obtained by integrating local relative-pose estimates without loop closure.
     The result illustrates pose-estimation consistency at the odometry level, while the residual drift motivates loop closure or long-range constraints for global trajectory correction.}
     \label{fig:geont_odometry_trajectory}
@@ -801,25 +837,25 @@ At the same time, the remaining deviation reflects the expected limitation of pu
 \end{figure}
 
 Figure~\ref{fig:geont_scale_factor_visualization} illustrates the role and limitation of the pose-scale graph.
-The estimated scale curves follow the local variations of the oracle scale, indicating that GeoNT factors provide locally consistent scale information for nearby keyframes.
+The estimated scale curves follow the local variations of the oracle scale, indicating that GeNT factors provide locally consistent scale information for nearby keyframes.
 However, the curves gradually deviate from the oracle scale over the longer sequence, especially in later portions where local constraints cannot anchor the accumulated gauge drift.
 This behavior is expected for a local mapping formulation: PGO smooths pose and scale over the active graph, but without loop closure or long-range scale anchors it cannot fully correct global scale drift.
-Adding loop-closure constraints or a long-term map memory is therefore a natural extension for reducing the remaining drift while preserving the local GeoNT measurement formulation.
+Adding loop-closure constraints or a long-term map memory is therefore a natural extension for reducing the remaining drift while preserving the local GeNT measurement formulation.
 
 \section{Discussion}
 \label{sec:geont_discussion}
 
 \subsection{Relation to Previous Thesis Chapters}
-GeoNT completes the thesis progression by changing both the input cue and the system setting.
+GeNT completes the thesis progression by changing both the input cue and the system setting.
 NMRF begins from explicit stereo correspondence and learns structured inference over disparity labels.
 BridgeDepth aligns monocular semantic priors and stereo hypotheses before the final depth estimate.
 DispViT unifies semantic context and binocular geometry in a single Transformer stream.
-GeoNT then moves to monocular video, where the central cue is temporal motion rather than a fixed stereo baseline.
+GeNT then moves to monocular video, where the central cue is temporal motion rather than a fixed stereo baseline.
 The model still follows the same thesis principle: robust perception comes from integrating complementary geometric evidence inside a learned representation.
 
 The new element is that the representation is built from explicit geometric measurements.
 DispViT tokenizes images from a stereo pair and uses architectural biases to make binocular displacement visible to the Transformer.
-GeoNT tokenizes the displacement field itself.
+GeNT tokenizes the displacement field itself.
 This makes the temporal relation explicit: the model receives flow, flow reliability, normalized coordinates, and a monocular depth prior.
 The Transformer therefore reasons over the physical quantities that define the depth-pose ambiguity.
 This is a natural final step for the thesis because it turns the earlier idea of unified visual geometry into a streaming robotic perception system.
@@ -828,7 +864,7 @@ This is a natural final step for the thesis because it turns the earlier idea of
 The local-mapping target follows from the two geometric timescales of the method.
 A robot needs immediate per-frame tracking depth to react to nearby geometry, and it also needs stable keyframe-based dense geometry to maintain a coherent active local map.
 For these uses, low-latency per-frame geometry, stable keyframe depth, and a locally smooth pose-scale trajectory can be as important as the final global trajectory number.
-This is why GeoNT is formulated around measurements, keyframe-aligned local geometry, and scale behavior.
+This is why GeNT is formulated around measurements, keyframe-aligned local geometry, and scale behavior.
 
 This framing also clarifies how to interpret optional proximity and retrieval components.
 MASt3R-style nonlocal retrieval can add useful constraints, especially when the camera revisits a region.
@@ -837,7 +873,7 @@ The main depth update remains the temporally supported multi-view consolidation 
 Thus, the system preserves its depth-centric local mapping identity even when additional graph connectivity is available.
 
 \subsection{Limitations \& Future Directions}
-GeoNT is currently scoped to monocular local mapping with fixed intrinsics and a normalized monocular depth prior.
+GeNT is currently scoped to monocular local mapping with fixed intrinsics and a normalized monocular depth prior.
 This setting keeps the depth-scale convention clean, but it does not yet cover changing intrinsics, rolling shutter, multi-camera rigs, or asynchronous sensors.
 The method also depends on optical flow as the explicit temporal correspondence cue.
 Large occlusions, motion blur, repeated texture, non-Lambertian surfaces, rapid camera motion, or systematic monocular-prior errors can therefore affect the geometry tokens before Transformer aggregation.
@@ -850,15 +886,15 @@ PGO optimizes keyframe poses and node scales, but it does not perform late dense
 %\subsection{Future Directions}
 Several extensions follow directly from these boundaries.
 Future work could train the camera-prior token more explicitly, extend geometry-native tokenization to stereo-video or multi-camera streams.
-At the system level, loop closure and long-term map memory would address the scale drift observed in local odometry while preserving the GeoNT measurement formulation.
+At the system level, loop closure and long-term map memory would address the scale drift observed in local odometry while preserving the GeNT measurement formulation.
 %A lightweight per-frame output interface would also make transient tracking depth available for benchmarking or control without changing the keyframe-based local map.
 
 \section{Conclusion}
 \label{sec:geont_conclusion}
-This chapter presented GeoNT, a Geometry-Native Transformer for monocular video depth and streaming local mapping.
-GeoNT replaces image-token reasoning with explicit geometric tokens built from flow, flow reliability, camera-normalized rays, and normalized monocular depth, and uses camera-token conditioning to convert these cues into refined keyframe depth and relative-pose measurements.
+This chapter presented GeNT, a Geometry-Native Transformer for monocular video depth and streaming local mapping.
+GeNT replaces image-token reasoning with explicit geometric tokens built from flow, flow reliability, camera-normalized rays, and normalized monocular depth, and uses camera-token conditioning to convert these cues into refined keyframe depth and relative-pose measurements.
 The streaming runtime separates immediate per-frame tracking response from temporally consolidated keyframe geometry, while a pose-scale graph gives the normalized depth maps their metric interpretation.
 
 The experiments support this local-mapping view.
-GeoNT improves keyframe-aligned depth over the monocular prior and the compared streaming or chunked baselines, produces accurate graph-factor rotations and translation directions, and shows locally consistent scale behavior while still exhibiting odometric drift without loop closure.
-Within the thesis arc, GeoNT extends the earlier progression from stereo correspondence and unified static representation to temporal robotic geometry, showing that learned depth and motion estimation can be organized around geometry-centered tokens, local mapping, and graph-compatible measurements.
+GeNT improves keyframe-aligned depth over the monocular prior and the compared streaming or chunked baselines, produces accurate graph-factor rotations and translation directions, and shows locally consistent scale behavior while still exhibiting odometric drift without loop closure.
+Within the thesis arc, GeNT extends the earlier progression from stereo correspondence and unified static representation to temporal robotic geometry, showing that learned depth and motion estimation can be organized around geometry-centered tokens, local mapping, and graph-compatible measurements.

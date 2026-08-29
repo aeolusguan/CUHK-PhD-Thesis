@@ -37,19 +37,19 @@ The results showed that the learned representation preserves both metric geometr
 DispViT therefore marks a transition from aligning separate pathways toward learning a unified representation in which geometry and semantics are jointly encoded.
 
 The final part of the thesis extended the same principle to temporal robotic perception.
-GeoNT introduced a Geometry-Native Transformer for monocular video depth estimation and streaming local mapping.
-Instead of tokenizing raw RGB appearance, GeoNT tokenizes optical flow, flow reliability, intrinsics-normalized image coordinates, and normalized monocular depth.
+GeNT introduced a Geometry-Native Transformer for monocular video depth estimation and streaming local mapping.
+Instead of tokenizing raw RGB appearance, GeNT tokenizes optical flow, flow reliability, intrinsics-normalized image coordinates, and normalized monocular depth.
 These geometry-centered tokens make the depth-pose ambiguity explicit to the Transformer.
 The model predicts refined keyframe depth, relative-pose measurements, and confidence values, and a streaming runtime converts these predictions into low-latency tracking response, temporally consolidated keyframe geometry, and a pose-scale graph.
 Experiments showed improved keyframe-aligned depth, accurate graph-factor rotations and translation directions, and locally consistent scale behavior.
-GeoNT completes the thesis arc by moving from static stereo geometry to temporal metric geometry for local robotic mapping.
+GeNT completes the thesis arc by moving from static stereo geometry to temporal metric geometry for local robotic mapping.
 
 \section{Overall Findings}
 
 The first finding is that explicit geometric structure remains valuable inside neural perception systems.
 NMRF shows that classical energy-based reasoning can be embedded into a learnable stereo network without discarding geometric inductive bias.
 The pseudo-label chapter shows that optimization-based regularization can also improve the training signal itself, rather than only the final prediction.
-GeoNT similarly demonstrates that representing motion through geometry-native tokens can make a Transformer reason over the physical variables that define depth and pose.
+GeNT similarly demonstrates that representing motion through geometry-native tokens can make a Transformer reason over the physical variables that define depth and pose.
 Across these chapters, geometry is not merely an output to be regressed; it is also a useful organizational principle for representation design, supervision design, and runtime system design.
 
 The second finding is that robustness improves when complementary cues interact within the representation.
@@ -57,13 +57,13 @@ Stereo correspondence is metrically grounded but fragile in ambiguous regions.
 Monocular context is semantically rich but lacks reliable scale.
 BridgeDepth shows that these cues can compensate for each other when aligned in a shared latent space.
 DispViT goes further by forming a single representation from which both disparity and semantic organization can be read.
-GeoNT extends the same idea to temporal motion by combining flow, confidence, camera rays, and monocular depth priors.
+GeNT extends the same idea to temporal motion by combining flow, confidence, camera rays, and monocular depth priors.
 These results support the broader conclusion that robust metric geometry emerges when a model can dynamically balance correspondence, learned context, and temporal evidence during inference.
 
 The third finding is that thesis-level progress in visual geometry requires attention to both algorithms and operating regimes.
 Benchmark disparity accuracy is important, but it is not the only measure of meaningful perception.
 Boundary quality, surface-normal consistency, zero-shot generalization, rare-category behavior, scale stability, latency, and graph compatibility all determine whether a model can support downstream robotic systems.
-The progression from NMRF to GeoNT therefore reflects a widening of scope: from accurate stereo disparity, to reliable supervision, to cross-modal reasoning, to unified geometry-semantic representation learning, and finally to streaming local mapping.
+The progression from NMRF to GeNT therefore reflects a widening of scope: from accurate stereo disparity, to reliable supervision, to cross-modal reasoning, to unified geometry-semantic representation learning, and finally to streaming local mapping.
 
 \section{Limitations}
 
@@ -71,20 +71,29 @@ The methods developed in this thesis also have important scope limitations.
 NMRF and BridgeDepth rely on compact disparity proposal sets, which can become restrictive at very high resolutions or under unusually large disparity ranges.
 BridgeDepth additionally inherits the computational cost of using a strong monocular foundation model.
 DispViT depends on rectified stereo input and supervised disparity data, and its semantic branch is used mainly as a readout probe rather than as a fully joint semantic learning objective.
-GeoNT is currently formulated for monocular local mapping with fixed intrinsics and a normalized monocular depth prior.
+GeNT is currently formulated for monocular local mapping with fixed intrinsics and a normalized monocular depth prior.
 These design choices keep the experiments focused, while leaving broader sensor configurations, longer-horizon operation, and highly dynamic environments outside the scope of the present evaluation.
 
 A second limitation concerns difficult scene content.
 Reflective and transparent surfaces, thin structures, rare semantic categories, and low-parallax motion remain challenging throughout the thesis.
-Different chapters address different parts of this problem: NMRF improves structured stereo reasoning, the pseudo-label method improves boundary supervision, BridgeDepth introduces monocular priors, DispViT learns a broader unified representation, and GeoNT adds temporal geometry.
+Different chapters address different parts of this problem: NMRF improves structured stereo reasoning, the pseudo-label method improves boundary supervision, BridgeDepth introduces monocular priors, DispViT learns a broader unified representation, and GeNT adds temporal geometry.
 However, none of these components fully resolves all ambiguity in open-world scenes.
 This limitation should be interpreted as a scope boundary rather than a failure of the thesis direction: each source of evidence reduces some failure modes while introducing its own assumptions.
 
 A third limitation is system completeness.
-GeoNT demonstrates streaming local mapping, but it does not yet include full long-term SLAM capabilities such as loop closure, relocalization, long-term map memory, or explicit dynamic-object modeling.
+GeNT demonstrates streaming local mapping, but it does not yet include full long-term SLAM capabilities such as loop closure, relocalization, long-term map memory, or explicit dynamic-object modeling.
 Its pose-scale graph improves local consistency, but odometric drift can still accumulate without global constraints.
 Similarly, the earlier stereo and representation-learning chapters are evaluated mainly as perception modules rather than as fully integrated closed-loop robotic systems.
 Additional work is needed to connect the proposed representations to planning, control, and long-horizon autonomy.
+
+\section{Produced Publications}
+The research work of this dissertation has produced the following publications.
+
+\noindent \textbf{Tongfan Guan}, Chen Wang, and Yun-Hui Liu. ``Neural Markov Random Field for Stereo Matching.'' \emph{CVPR}, 2024.
+
+\noindent \textbf{Tongfan Guan}, Jiaxin Guo, Chen Wang, and Yun-Hui Liu. ``BridgeDepth: Bridging Monocular and Stereo Reasoning with Latent Alignment.'' \emph{ICCV}, 2025. \textbf{Highlight}.
+
+\noindent \textbf{Tongfan Guan}, Jiaxin Guo, Tianyu Huang, Jinhu Dong, Chen Wang, and Yun-Hui Liu. ``DispViT: Direct Stereo Disparity Regression with a Single-Stream Vision Transformer.'' \emph{ICLR}, 2026.
 
 \section{Future Directions}
 
@@ -116,5 +125,5 @@ NMRF shows how structured inference can be learned for stereo matching.
 Structure-aware depth completion shows how cleaner supervision can improve geometric learning.
 BridgeDepth shows how monocular semantic priors and stereo geometric evidence can meet in a shared latent space.
 DispViT shows how metric geometry and semantic organization can be decoded from a unified representation.
-GeoNT shows how geometry-centered tokens can support temporal depth and motion estimation in a streaming local-mapping system.
+GeNT shows how geometry-centered tokens can support temporal depth and motion estimation in a streaming local-mapping system.
 Together, these contributions support a view of robotic perception in which geometry, semantics, and motion are not separate products of separate pipelines, but mutually reinforcing aspects of a learned representation for understanding the 3D world.

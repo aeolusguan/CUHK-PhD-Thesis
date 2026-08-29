@@ -28,20 +28,20 @@ In contrast, despite substantial progress in recent years, existing computationa
 Stereo matching~\cite{scharstein2002taxonomy,hirschmuller2005accurate}, monocular depth estimation~\cite{eigen2014depth,Ranftl2022}, and structure-from-motion~\cite{schoenberger2016sfm,pan2024glomap} have typically been studied in isolation, each relying on distinct intermediate representations that limit their ability to transfer knowledge across modalities or to generalize under challenging conditions.
 Methods are tailored to specific observational settings rather than unified by a common representational framework.
 As a result, they often struggle in scenarios where individual cues are weak, ambiguous, or conflicting.
-This thesis argues that progress toward robust and generalizable perception requires moving beyond this separation, toward learning unified geometric representations that can flexibly integrate heterogeneous visual observations. % unification of these fragmented cues within a shared learning architecture, mirroring the integrative principles observed in biological vision.
-To ground this argument, my work investigates a series of approaches that progressively move toward unified geometric reasoning, spanning three distinct yet interconnected sources of visual geometry: spatial correspondence, semantic context, and temporal motion.
+This separation motivates a closer review of how existing methods represent and combine visual evidence across stereo, monocular, hybrid, and temporal settings.
+The following section therefore first examines the prior art along these lines before returning to the contributions of this thesis.
 
 \noindent\textbf{Spatial Geometry (Stereo Correspondence).} When a scene is observed from two distinct viewpoints simultaneously, the relative displacement, or disparity, of corresponding points provides a direct geometric signal for depth.
 In a standard rectified binocular setup, where images are aligned such that corresponding points lie on the same horizontal line, the relationship between disparity $d$ and depth $z$ is given by $z=f\cdot b / d$, where $f$ is the focal length and $b$ is the baseline distance between the two cameras~\cite{hartley2003multiple}.
 This simple triangulation makes stereo correspondence a well-posed route to depth, grounded in explicit geometric principles.
 However, the practical difficulty lies in establishing reliable correspondences.
 The cue fails in textureless regions where matching is ambiguous, at occlusions where points are visible in only one view, and under specularities where appearance varies with viewpoint.
-Stereo correspondence therefore serves as the foundation of my investigation, providing a geometrically precise but brittle signal that motivates the integration of additional cues.
+Stereo correspondence therefore provides a geometrically precise but brittle starting point, motivating the integration of additional cues.
 
 \noindent\textbf{Cognitive Geometry (Semantic Context).} A single image does not provide explicit correspondence, yet humans are able to infer depth from it with remarkable accuracy.
 This capability arises from internalized prior knowledge about the structure of the world: objects such as cars exhibit characteristic physical scales, the sky is typically distant, and road surfaces provide strong perspective cues as they recede.
 Such semantic and structural context, learned from experience, offers powerful constraints for resolving geometric ambiguities in scenarios where correspondence-based cues are weak or unreliable.
-Integrating this cognitive geometry with explicit spatial geometry is therefore essential for achieving robust depth perception, and constitutes a central focus of this thesis.
+Integrating this cognitive geometry with explicit spatial geometry is therefore essential for achieving robust depth perception.
 
 \noindent\textbf{Temporal Geometry (Motion and Structure).} While binocular and monocular static images provide powerful depth cues, the most general and ubiquitous source of visual geometry is temporal motion.
 When a camera moves through the world, the resulting image sequence provides geometric constraints through motion parallax, whereby nearby objects exhibit larger apparent motion than distant ones.
@@ -50,36 +50,21 @@ However, this coupling also introduces fundamental challenges: separating motion
 Effective reasoning over temporal information therefore requires models that can disentangle these factors while maintaining consistency with the underlying geometric structure.
 As the most general and ubiquitous source of visual geometry, temporal motion forms a critical foundation for unified depth and motion perception.
 
-These complementary sources of geometric information form the conceptual foundation of this thesis. 
-Rather than treating them as separate problems, this thesis advocates and demonstrates a unified perspective: visual understanding arises from learning shared geometric representations that transcend individual modalities. 
-%Through a series of models spanning structured correspondence reasoning, cross-modal latent alignment, unification representation learning, and temporal motion analysis, we demonstrate that diverse visual cues can be integrated for robust and generalizable depth and motion estimation.
-\section{Contributions}
-Motivated by the perspective of unified geometric representation learning, this thesis develops a sequence of models that progressively advance from structured correspondence reasoning toward holistic geometric inference that integrates across diverse observational modalities.
-The key contributions are summarized as follows.
+Together, stereo correspondence, semantic context, and temporal motion define the three complementary pillars of visual geometry that inform this thesis.
+These complementary sources of geometric information form the conceptual foundation of this thesis.
+Yet, existing computational approaches largely treat these pillars in isolation, fragmenting the representation of geometry across disparate pipelines rather than exploiting their synergies.
+This separation leaves significant room for more integrated geometric representation learning.
 
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Structured geometric reasoning for stereo matching.} This thesis first revisits stereo correspondence from a principled geometric perspective and proposes \emph{Neural Markov Random Fields (NMRF)} for stereo disparity estimation.
-    The work integrates classical energy-based formulations with modern deep learning by embedding Markov Random Field inference within a neural architecture.
-    It enables neural modeling of local smoothness and matching fidelity during disparity estimation, thereby bridging hand-crafted geometric priors and data-driven learning.
-    This establishes a strong foundation for geometry-aware reasoning in neural networks, addressing the spatial geometry observation in isolation.
-    \item \textbf{Cross-modal alignment of monocular and stereo representations.} Building on correspondence-based reasoning, this thesis addresses the disconnect between different depth observation modalities and proposes \emph{BridgeDepth}, a unified framework that aligns monocular and stereo representations within a shared latent space.
-    Through iterative bidirectional interaction, the model leverages the complementary strengths of semantic priors (cognitive geometry) and geometric constraints (spatial geometry), enabling knowledge transfer across modalities.
-    This work demonstrates that heterogeneous geometric observations can be effectively integrated through representation alignment rather than isolated processing.
-    \item \textbf{Unified geometric representation for depth estimation.} Going beyond the alignment of separate modality-specific pathways, this thesis investigates whether a single shared architecture can capture multiple forms of visual geometry.
-    \emph{DispViT} is proposed as a single-stream Vision Transformer that processes binocular inputs to directly predict disparity without explicit correspondence modeling.
-    Remarkably, the same architecture along with the same model parameters, can be applied to single image for monocular depth estimation.
-    This result provides a proof-of-concept that a unified geometric representation can transcend task-specific inductive bias, enabling depth inference from both stereo correspondence and monocular semantic within a single, coherent framework.
-    \item \textbf{Geometry-native temporal reasoning for streaming local mapping.} Extending unified geometric representation learning to monocular video, this thesis investigates how temporal motion and monocular depth priors can be organized into a geometry-native representation for depth and ego-motion estimation.
-    \emph{GeoNT} tokenizes optical flow, flow confidence, intrinsics-normalized image coordinates, and normalized monocular depth instead of raw RGB appearance.
-    From this representation, the model jointly predicts refined keyframe depth, source-to-neighbor relative poses, and confidence values.
-    A streaming local mapping runtime then turns these predictions into low-latency keyframe depth and locally coherent pose-scale estimates.
-    This contribution brings the thesis arc from static stereo and semantic representation learning to temporal geometry for robotic local perception.
-\end{itemize}
+\noindent\textbf{Relevance to Robotics.} In robotic systems, visual geometry provides the foundation for state estimation and action: metric depth supports localization, mapping, navigation, and obstacle avoidance, while semantic structure helps robots interpret and interact with their surroundings.
+The contributions of this thesis address successive requirements of this perception stack.
+NMRF improves structured stereo correspondence; structure-aware depth completion enhances the reliability of geometric supervision; BridgeDepth combines monocular semantic priors with stereo constraints; DispViT learns a shared geometry-semantic representation, and GeNT extends this perspective to temporal depth and motion for streaming local mapping.
+The thesis therefore focuses on computer-vision models as the geometric perception layer of robotics, while leaving downstream planning and control outside its scope.
 
 \section{Related Works}
 
-This section reviews existing approaches to depth and motion estimation from visual geometry, organized by the geometric observations they primarily address.
-We begin with stereo matching, which provides explicit spatial geometry
+This section reviews existing approaches to depth and motion estimation from visual geometry, organized according to the thesis narrative from spatial correspondence, to monocular semantic priors, to hybrid monocular-stereo reasoning, and finally to temporal motion.
+This ordering first establishes the strengths and limits of each source of evidence, then exposes why a progressive move toward shared geometric representation learning is needed.
+
 \subsection{Stereo Matching: Spatial Geometry}
 
 Stereo matching estimates depth from a pair of rectified image by finding correspondences between left and right views.
@@ -128,9 +113,8 @@ Because tuning SGM’s penalty parameters $P_1$, $P_2$ for disparity discontinui
 For instance, \cite{seki2017sgm} trains a network to output pixel‑wise parameters $P_1(o)$ and $P_2(o)$. Similarly, PBCP~\cite{seki2016patch} determines these penalties from a CNN‑estimated confidence map. A more integrated approach appears in Hybrid CNN‑CRF~\cite{knobelreiter2017end}, which performs full‑image feature matching and enables end‑to‑end learning of both unary/pairwise CNNs and SGM message passing.
 GANet~\cite{Zhang2019GANet} introduces a learnable approximation of SGM, where a guidance weight matrix learned from data substitutes the originally hand‑crafted parameters.
 More recent work by Knobelreiter et al.~\cite{knobelreiter2020belief} formulates Belief Propagation (BP) as a differentiable module with supervision on marginal distributions, thereby removing the need for hand‑designed message‑passing rules.
- Despite these advances, many methods remain limited by partially hand‑crafted inference mechanisms or restricted modeling capacity for complex spatial interactions.
- In contrast, this thesis embeds the full MRF inference process within a neural architecture, enabling end-to-end learning of both representation and structured reasoning.
- This establishes a geometry-aware foundation that subsequent chapters extend toward cross-modal alignment and unified geometric representation learning.
+Despite these advances, many methods remain limited by partially hand‑crafted inference mechanisms or restricted modeling capacity for complex spatial interactions.
+This leaves room for a stereo formulation in which structured inference, representation learning, and geometric regularization are integrated more fully within a neural architecture.
 
 \subsection{Monocular Depth Estimation: Cognitive Geometry}
 Monocular depth estimation aims to infer scene geometry from a single image, a fundamentally ill-posed problem due to the absence of explicit geometric constraints.
@@ -152,7 +136,7 @@ In parallel, efforts have been made to recover metric depth by incorporating cam
 Approaches including UniDepth~\cite{piccinelli2024unidepth} and Metric3D~\cite{yin2023metric3d,bochkovskii2024depth} introduce mechanisms to account for camera intrinsics and canonicalize scene representations, partially alleviating scale ambiguity and enabling more consistent metric predictions across diverse imaging conditions.
 Despite these advances, monocular depth estimation remains inherently dependent on learned priors rather than explicit geometric constraints.
 While such priors enable strong generalization and semantic understanding, they may fail in out-of-distribution scenarios or when prior assumptions are violated.
-This limitation highlights the complementary nature of monocular and stereo cues, motivating approaches that integrate semantic priors with geometric constraints within a unified representation framework, as explored in this thesis.
+This limitation highlights the complementary nature of monocular and stereo cues, motivating approaches that can integrate semantic priors with geometric constraints rather than relying on either source alone.
 
 \subsection{Hybrid Stereo and Monocular Depth Estimation}
 Despite their complementary strengths, stereo matching and monocular depth estimation each exhibit inherent limitations: stereo methods remain vulnerable to matching ambiguity, while monocular approaches depend heavily on learned priors and suffer from scale ambiguity.
@@ -184,7 +168,7 @@ As a result, the underlying geometric structure shared across modalities is not 
 This limitation motivates the development of approaches that enable tighter integration through shared latent representations and continuous cross-modal interaction.
 Rather than treating monocular and stereo estimation as separate modules with ad-hoc fusion, a unified framework should learn to dynamically balance geometric correspondence and semantic priors within a single inference process.
 Such a formulation would allow the model to exploit geometric precision where stereo correspondence is reliable, while seamlessly falling back on semantic priors when stereo cues are ambiguous.
-This perspective is further explored in this thesis.
+This gap motivates tighter latent interaction and, ultimately, unified geometry-semantic representations that can encode correspondence and scene understanding together.
 
 \subsection{Depth and Motion from Video: Temporal Geometry}
 The preceding discussions on monocular and stereo depth estimation highlights the complementary roles of learned priors and geometric constraints in recovering scene structure.
@@ -233,19 +217,42 @@ Unlike earlier methods that rely on pairwise predictions or post-hoc alignment, 
 It achieves state-of-the-art performance across a wide range of 3D vision tasks while maintaining high computational efficiency.
 Moreover, its learned geometric representations transfer effectively to downstream tasks such as point tracking and novel view synthesis.
 
-Together, differentiable SLAM and feed-forward geometry transformers clarify why the final chapter adopts a geometry-native Transformer rather than following either paradigm directly.
+Together, differentiable SLAM and feed-forward geometry transformers clarify the need for temporal representations that retain explicit geometric measurements while benefiting from learned global aggregation.
 Optimization-centered systems such as DROID-SLAM and MegaSaM show that learned priors can make dense geometric optimization more robust, but they are mainly organized around pose accuracy and still require separate treatment when high-quality depth is the target.
 Feed-forward systems such as DUSt3R and VGGT show that Transformers can learn powerful geometric priors from RGB views, but they are generally offline multi-view predictors; even when adapted to streaming use, repeated large-model inference can introduce latency, and dense depth quality remains a separate empirical question.
-The temporal chapter takes a complementary route: it uses estimated optical flow, flow uncertainty, camera intrinsics, and monocular depth priors as geometry-native tokens for keyframe-based streaming depth and motion estimation.
-This design keeps the physical measurements that couple depth and ego-motion visible to the Transformer while still allowing learned global aggregation.
-Because its outputs are refined keyframe depths, confidence-weighted relative pose measurements, and graph-compatible edges, the formulation can also serve as a measurement module for existing SLAM systems that need additional constraints against accumulated drift.
-It therefore connects contemporary geometry models to the thesis's broader argument that neural perception can integrate complementary geometric evidence across spatial, semantic, and temporal settings.
-\section{Produced Publications}
-The research work of this dissertation has produced some direct and indirect publications as listed below:
-%\noindent \bullet xx \\
-\begin{itemize}
-    \item $\cdots$
-\end{itemize}
+This suggests a complementary route: temporal models should keep the physical measurements that couple depth and ego-motion visible to the network, while still using learned representations to organize motion, reliability, camera geometry, and monocular structure.
+The reviewed literature therefore leads to the thesis argument that robust depth and motion perception requires neural systems that integrate complementary geometric evidence across spatial, semantic, and temporal settings.
 
+\section{Contributions}
+Motivated by the gaps identified above, the central contribution of this thesis is a progressive framework that unifies spatial stereo evidence, monocular semantic priors, and temporal motion cues for robust depth and motion perception.
+Rather than presenting independent methods for separate tasks, the contributions follow a logical progression: explicit stereo correspondence first establishes a structured geometric anchor; monocular priors are then aligned with this stereo evidence; geometry and semantics are subsequently encoded into a shared representation;  and finally, temporal motion parallax is integrated as an additional form of geometric evidence.
+The key contributions are summarized as follows.
+
+\begin{itemize}[leftmargin=*]
+    \item \textbf{Learning MRF potentials from data for structured stereo inference.} Conventional MRF-based stereo models formulate matching with hand-crafted unary and pairwise potentials.
+    This thesis introduces \emph{Neural Markov Random Fields (NMRF)}, which learns these potentials from data while retaining structured message-passing inference.
+    The resulting data-driven yet geometry-aware formulation provides a foundation for integrating complementary cues in later chapters.
+    \item \textbf{Aligning monocular semantic priors with stereo geometric evidence.} Monocular models capture semantic structure, whereas stereo provides metric geometry. Their complementarity motivates a unified representation.
+    This thesis introduces \emph{BridgeDepth}, which aligns the two modalities through bidirectional interaction in a shared latent space.
+    This interaction enables semantic context to guide ambiguous stereo regions, while stereo evidence grounds monocular predictions in metric geometry.
+    \item \textbf{Unifying geometry and semantics in a shared representation.} Beyond aligning separate pathways, this thesis investigates whether a unified representation can jointly encode scene semantics and metric geometry.
+    \emph{DispViT} is introduced as a single-stream Vision Transformer that decodes disparity from a shared binocular representation.
+    Disparity estimation serves as the primary geometric readout, while reference-view semantic segmentation acts as an auxiliary probe to verify semantic preservation within the representation.
+    This contribution advances the thesis from aligning distinct modalities to achieve a genuine geometry-semantic unification.
+    \item \textbf{Extending unified visual geometry to temporal evidence.} Building on the progression from structured stereo inference to unified geometry-semantic representations, this thesis turns to temporal evidence in monocular video.
+    Whereas feed-forward reconstruction methods typically operate on visual representations and leave geometric relationships implicit, \emph{GeNT} (Geometry-Native Transformer) operates directly on geometric primitives, including optical flow, optical-flow confidence, and monocular depth priors.
+    GeNT thus completes the thesis progression toward unified visual geometry learning by extending the same representational perspective from spatial stereo and semantic cues to temporal motion for local mapping.
+\end{itemize}
+Collectively, these contributions advance a cumulative argument: robust depth and motion perception emerges from the progressive organization of spatial, semantic, and temporal evidence into increasingly unified geometric representations.
 
 \section{Thesis Outline}
+The remainder of this thesis follows a progression from structured stereo inference to unified geometry-semantic and temporal representation learning.
+Rather than treating the chapters as isolated studies, it builds a cumulative argument in which each stage strengthens the representation of visual geometry and broadens the evidence available to the model.
+Chapter~\ref{ch:nmrf} establishes the stereo foundation by learning disparity inference over compact hypotheses, and Chapter~\ref{ch:pseudo-label} strengthens this foundation through structure-aware depth completion for more reliable supervision.
+Taken together, these two chapters establish the stereo foundation on which the later unification of modalities can build.
+They also make clear that reliable geometric structure alone is not enough when the scene requires complementary semantic context.
+
+Building on this foundation, Chapter~\ref{ch:bridgedepth} aligns monocular semantic priors with stereo geometric evidence in a shared latent space, while Chapter~\ref{ch:dispvit} moves toward a single-stream geometry-semantic representation that decodes disparity and exposes semantic organization through an auxiliary readout.
+This transition marks a shift from improving stereo geometry in isolation to learning a representation in which geometry and semantics are encoded together.
+Chapter~\ref{ch:geont} extends the same perspective to monocular video with GeNT, which uses optical flow, flow confidence, camera model, and monocular depth priors for streaming local mapping.
+Chapter~\ref{ch:conclusion} concludes the thesis by synthesizing the findings, limitations, and future directions for robust depth and motion perception.

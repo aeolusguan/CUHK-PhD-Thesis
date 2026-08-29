@@ -84,10 +84,10 @@
 
 \committee{
 \centering
-  Professor AAA (Chair)\\
-  Professor BBB (Thesis Supervisor)\\
-  Professor CCC (Committee Member)\\
-  Professor DDD (External Examiner)
+  Professor FU Chi Wing (Chair)\\
+  Professor LIU Yunhui (Thesis Supervisor)\\
+  Professor DOU Qi (Committee Member)\\
+  Professor ZHANG Hong (External Examiner)
 %\end{flushleft}
 }
 

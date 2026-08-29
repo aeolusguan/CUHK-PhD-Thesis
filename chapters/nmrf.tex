@@ -24,7 +24,7 @@ Given a rectified stereo image pair, consisting of a left image $I^L$ and a righ
 For a pixel $\mathbf{p} = (i,j)$ in the left image, its corresponding point in the right image appears at $\mathbf{p}' = (i, j-d)$ under the rectified epipolar geometry, where $d > 0$ is the disparity.
 The depth is then recovered as $f \cdot b / d$, with $f$ the focal length and $b$ the baseline distance.
 
-We formulate stereo matching as a discrete labeling problem, where each pixel $o$ in $I_L$ is assigned a candidate disparity draw from a finite set of set $L_o \subset \mathbb{R}^+$.
+We formulate stereo matching as a discrete labeling problem, where each pixel $o$ in $I_L$ is assigned a candidate disparity draw from a finite set $L_o \subset \mathbb{R}^+$.
 Classical MRF-based approaches minimize an energy function over assignments $\{z_o \mid z_o \in L_o\}$ and rely on pairwise smoothness terms to regularize the solution.
 However, such formulations typically model interactions using simple functions of disparity differences (\eg, $|z_o - z_p|$), which limits their ability to capture richer contextual and geometric relationships~\cite{szeliski2008comparative}.
 To address this limitation, we propose a Neural Markov Random Field (NMRF).
@@ -50,7 +50,7 @@ In contrast to traditional MRF formulations where $\Phi$ and $\Psi$ are manually
 Exact inference of the posterior $p(\{\mathbf{z}_v\} \mid \{\mathbf{x}_v\})$ is computationally intractable due to the densely connected structure of the graph.
 To enable efficient inference, we adopt a mean-field approximation, in which the joint posterior is factorized into a product of independent marginal distributions:
 \begin{equation}
-	p(\{\mathbf{z}_v\} \mid \{\mathbf{x}_v\}) \approx \prod_{v} q_v(\mathbf{z}_v).
+	p(\{\mathbf{z}_v\} \mid \{\mathbf{x}_v\}) \approx \prod_{v} q_v(\mathbf{z}_v \mid \mathbf{x}_v).
 \end{equation}
 The optimal set of marginals $\{q_v\}$ are obtained by minimizing the Kullback–Leibler (KL) divergence between the approximate and true posteriors~\cite{dai2016discriminative}.
 
@@ -154,7 +154,7 @@ Given a rectified stereo pair $(I^L, I^R)$, we employ a Siamese feature extracto
 Specifically, coarse-level features at $\nicefrac{1}{8}$ resolution are denoted as $\tilde{F}^L$ and $\tilde{F}^R$, while fine-level features at $\nicefrac{1}{4}$ resolution are denoted as $\hat{F}^L$ and $\hat{F}^R$.
 These features play a critical role in stereo matching, especially in addressing challenges posed by occlusions, textureless regions, and varying lighting conditions.
 However, achieving more expressive feature representations typically entails increased computation overhead.
-To address the latency requirements of diverse applications, this paper introduces two feature network variants designed to balance performance and efficiency.
+To address the latency requirements of diverse applications, two feature network variants are introduced to balance performance and efficiency.
 
 \begin{figure}[!t]
 	\centering
@@ -301,7 +301,7 @@ Consequently, each input pixel $(i,j)$ is associated with a set of $K$ disparity
 The final disparity value is obtained using a winner-takes-all selection strategy, as illustrated in Figure~\ref{fig:nmrf_overview}(3).
 
 \subsection{Disparity Refinement}\label{sec:nmrf_refinement}
-The coarse-level NMRF inference already achieves strong performance, as demonstrated in xx.
+The coarse-level NMRF inference already achieves strong performance, as demonstrated in Table~\ref{tab:ablation_comp}.
 Nevertheless, fine-scale structures and object boundaries can be further improved through an additional refinement stage operating on higher-resolution features.
 To this end, we perform $N_f$ iterations of neural message passing on the fine-level feature representations to refine the disparity estimation.
 For computational efficiency, the refinement stage maintains only a single candidate label for each pixel.

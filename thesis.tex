@@ -94,16 +94,17 @@
 
 %%%%%%%%%%%%%%%% COMPULSORY FIELDS %%%%%%%%%%%%%%%%
 
-\title{Learning Depth and Motion from Visual Geometry: Unifying Stereo, Semantic, and Temporal Evidence} % needs to match title on DAC
+\title{Learning Depth and Motion from Visual Geometry: Unifying Correspondence and Semantic Evidence} % needs to match title on DAC
+%\title{Integrated Depth and Motion Estimation for Enhanced Scene Reconstruction: Combining Stereo, Monocular, and Temporal Cues}
 \author{GUAN, Tongfan} % full name as it appears on your GSAS record, needs
                           % to match name on DAC
 \degreename{Doctor of Philosophy}
 \degreefield{Mechanical and Automation Engineering} % Official name of subject as listed in GSAS
                                 % handbook
 \department{Mechanical and Automation Engineering} % official name of department
-\degreemonth{March} % Month of Defense (i.e. month when DAC was signed)
+\degreemonth{July} % Month of Defense (i.e. month when DAC was signed)
 \degreeyear{2026} % Year the DAC was signed
-\principaladvisor{Professor AA}
+\principaladvisor{Professor LIU Yunhui}
 
 % Optionally, you can add a second advisor, but you can't have three
 %\secondadvisor{Professor George Secondary}
@@ -144,7 +145,7 @@ Together, BridgeDepth and DispViT demonstrate a progression from cross-modal int
 The final part extends the same thesis narrative from static visual geometry to temporal geometry.
 Temporal motion offers a ubiquitous source of geometric evidence because a moving camera observes scene structure from multiple viewpoints, but this evidence is less direct than stereo correspondence.
 Optical flow mixes depth, ego-motion, object motion, correspondence reliability, and monocular scale, making temporal geometry a natural test of the central thesis: robust perception requires representations that keep complementary cues interpretable while allowing them to constrain one another.
-GeoNT addresses this challenge with a geometry-native Transformer that reasons over motion, reliability, camera rays, and monocular depth priors rather than treating video only as RGB appearance.
+GeNT addresses this challenge with a geometry-native Transformer that reasons over motion, reliability, camera rays, and monocular depth priors rather than treating video only as RGB appearance.
 By organizing temporal evidence in this form, the thesis extends unified geometry-semantic representation learning toward depth and motion estimation from monocular video for temporal local mapping.
 
 Across these contributions, the thesis argues that robust depth and motion perception is best understood as learning from complementary visual evidence rather than relying on a single cue or representation.
@@ -176,7 +177,7 @@ BridgeDepth 與 DispViT 共同展示了從跨模態互動到統一幾何-語義�
 論文的最後一部分將同一敘事從靜態視覺幾何推進到時間幾何。
 時間運動之所以重要，是因為移動相機可以從多個視角觀測場景結構；但與立體對應不同，這種證據並不直接。
 光流同時混合了深度、相機自運動、物體運動、對應可靠性與單目尺度，使時間幾何成為本文核心論點的自然檢驗：穩健感知需要一種表徵，既能保持互補線索的可解釋性，又能讓它們彼此約束。
-GeoNT 因此採用幾何原生 Transformer，圍繞運動、可靠性、相機射線與單目深度先驗進行推理，而不是僅將影片視為 RGB 外觀序列。
+GeNT 因此採用幾何原生 Transformer，圍繞運動、可靠性、相機射線與單目深度先驗進行推理，而不是僅將影片視為 RGB 外觀序列。
 透過這種時間證據組織方式，本論文將統一幾何-語義表徵學習延伸至單目影片中的深度與運動估計，並服務於時間局部建圖。
 
 綜合而言，本論文主張，穩健的深度與運動感知應被理解為從互補視覺證據中學習，而非依賴單一線索或單一表徵。
@@ -203,9 +204,11 @@ GeoNT 因此採用幾何原生 Transformer，圍繞運動、可靠性、相機�
 I would like to express my deepest gratitude to my supervisor, Professor Liu Yunhui, for his guidance, trust, and support throughout my doctoral study.
 His insight into robotics and visual perception has shaped the way I approach research problems, and his encouragement gave me the confidence to pursue difficult questions with patience and persistence.
 
-I am also sincerely grateful to my collaborators, Professor Wang Chen, Dr. Guo Jiaxin, Dr. Huang Tianyu, and Mr. Dong Jinhu.
+I am also sincerely grateful to my collaborators, Professor Wang Chen, Dr. Guo Jiaxin, Dr. Huang Tianyu, Mr. Dong Jinhu, and Mr. Wang Gang.
 The discussions, feedback, and joint efforts we shared have been invaluable to the development of this thesis.
 Working with them has taught me not only technical knowledge, but also the importance of clarity, rigor, and collaboration in research.
+I also acknowledge the assistance of Large Language Models, including DeepSeek and ChatGPT, which were used for language proofreading and writing refinement during the preparation of this thesis.
+I remain fully responsible for the final content, arguments, and wording.
 
 Finally, I would like to give my special thanks to my wife, Cao Yiwei.
 During the five years of my Ph.D. study, she shouldered most of the household responsibilities and cared for our family and child, allowing me to devote myself to research with fewer worries.
